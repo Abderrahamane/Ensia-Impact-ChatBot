@@ -4,7 +4,25 @@ const formEl = document.getElementById("chatForm");
 const inputEl = document.getElementById("messageInput");
 const sendBtn = document.getElementById("sendBtn");
 const newChatBtn = document.getElementById("newChatBtn");
+const themeBtn = document.getElementById("themeBtn");
+const exportBtn = document.getElementById("exportBtn");
+const apiBaseInput = document.getElementById("apiBaseInput");
+const saveApiBtn = document.getElementById("saveApiBtn");
+const quickPromptsEl = document.getElementById("quickPrompts");
 const CHAT_STORAGE_KEY = "ensia_web_chat_v1";
+const THEME_STORAGE_KEY = "ensia_web_theme";
+const API_BASE_KEY = "ensia_api_base";
+
+function getApiBase() {
+  const custom = (localStorage.getItem(API_BASE_KEY) || "").trim();
+  return custom || "";
+}
+
+function apiUrl(path) {
+  const base = getApiBase();
+  if (!base) return path;
+  return base.replace(/\/$/, "") + path;
+}
 
 function setOnlineState(isOnline, message) {
   statusEl.textContent = message;
@@ -24,6 +42,16 @@ function loadChatHistory() {
   chatEl.scrollTop = chatEl.scrollHeight;
 }
 
+function setTheme(theme) {
+  document.body.classList.toggle("light", theme === "light");
+  localStorage.setItem(THEME_STORAGE_KEY, theme);
+}
+
+function loadTheme() {
+  const t = localStorage.getItem(THEME_STORAGE_KEY) || "dark";
+  setTheme(t);
+}
+
 function addMessage(role, text, sources = []) {
   const wrap = document.createElement("div");
   wrap.className = "msg-wrap";
@@ -36,13 +64,38 @@ function addMessage(role, text, sources = []) {
   if (role === "bot" && Array.isArray(sources) && sources.length) {
     const src = document.createElement("div");
     src.className = "sources";
-    src.textContent = "Sources: " + sources.slice(0, 2).map((s) => `${s.date || ""} ${s.from || ""}`).join(" | ");
+    const bits = sources.slice(0, 2).map((s) => {
+      const label = `${s.date || ""} ${s.from || ""}`.trim() || "source";
+      const link = (s.links || "").split("|")[0]?.trim();
+      if (link && /^https?:\/\//.test(link)) {
+        return `<a href="${link}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+      }
+      return label;
+    });
+    src.innerHTML = "Sources: " + bits.join(" | ");
     wrap.appendChild(src);
   }
 
   chatEl.appendChild(wrap);
   chatEl.scrollTop = chatEl.scrollHeight;
   saveChatHistory();
+}
+
+function showTyping() {
+  const wrap = document.createElement("div");
+  wrap.className = "msg-wrap";
+  wrap.id = "typingWrap";
+  const div = document.createElement("div");
+  div.className = "msg bot";
+  div.textContent = "Thinking...";
+  wrap.appendChild(div);
+  chatEl.appendChild(wrap);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+function hideTyping() {
+  const t = document.getElementById("typingWrap");
+  if (t) t.remove();
 }
 
 function clearChat() {
@@ -52,7 +105,7 @@ function clearChat() {
 
 async function checkHealth() {
   try {
-    const res = await fetch("/api/health", { method: "GET" });
+    const res = await fetch(apiUrl("/api/health"), { method: "GET" });
     const data = await res.json();
     if (data.ok) {
       setOnlineState(true, `Server is online (backend: ${data.backend}).`);
@@ -73,16 +126,19 @@ formEl.addEventListener("submit", async (e) => {
   inputEl.value = "";
   inputEl.style.height = "auto";
   sendBtn.disabled = true;
+  showTyping();
 
   try {
-    const res = await fetch("/api/chat", {
+    const res = await fetch(apiUrl("/api/chat"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message }),
     });
     const data = await res.json();
+    hideTyping();
     addMessage("bot", data.answer || "No response.", data.sources || []);
   } catch {
+    hideTyping();
     addMessage("bot", "Server is down, please try later.");
   } finally {
     sendBtn.disabled = inputEl.disabled;
@@ -105,6 +161,49 @@ if (newChatBtn) {
   newChatBtn.addEventListener("click", clearChat);
 }
 
+if (themeBtn) {
+  themeBtn.addEventListener("click", () => {
+    const next = document.body.classList.contains("light") ? "dark" : "light";
+    setTheme(next);
+  });
+}
+
+if (exportBtn) {
+  exportBtn.addEventListener("click", () => {
+    const blob = new Blob([chatEl.innerText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "ensia_chat_export.txt";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+}
+
+if (apiBaseInput) {
+  apiBaseInput.value = localStorage.getItem(API_BASE_KEY) || "";
+}
+
+if (saveApiBtn) {
+  saveApiBtn.addEventListener("click", () => {
+    localStorage.setItem(API_BASE_KEY, (apiBaseInput.value || "").trim());
+    checkHealth();
+  });
+}
+
+if (quickPromptsEl) {
+  quickPromptsEl.addEventListener("click", (e) => {
+    const target = e.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (!target.classList.contains("prompt-chip")) return;
+    const q = target.getAttribute("data-q") || "";
+    inputEl.value = q;
+    inputEl.dispatchEvent(new Event("input"));
+    inputEl.focus();
+  });
+}
+
+loadTheme();
 loadChatHistory();
 checkHealth();
 setInterval(checkHealth, 10000);

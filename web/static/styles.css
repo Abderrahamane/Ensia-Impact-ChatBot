@@ -9,6 +9,17 @@
   --danger: #b91c1c;
 }
 
+body.light {
+  --bg: #f8fafc;
+  --panel: #ffffff;
+  --panel-2: #f3f4f6;
+  --border: #d1d5db;
+  --text: #111827;
+  --muted: #4b5563;
+  --brand: #0ea5a4;
+  --danger: #b91c1c;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -61,6 +72,16 @@ body {
   cursor: pointer;
 }
 
+.api-base {
+  width: 100%;
+  margin-top: 8px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
 .sidebar-note {
   margin-top: 12px;
   font-size: 12px;
@@ -107,6 +128,22 @@ body {
   padding: 20px;
 }
 
+.quick-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 20px 10px;
+}
+
+.prompt-chip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
 .msg-wrap {
   margin: 0 auto 14px;
   max-width: 900px;
@@ -131,9 +168,15 @@ body {
 
 .sources {
   margin-top: 8px;
-  padding-left: 8px;
+  padding: 8px;
   font-size: 12px;
   color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.sources a {
+  color: #60a5fa;
 }
 
 .composer {

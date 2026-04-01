@@ -11,8 +11,13 @@
     <aside class="sidebar">
       <div class="brand">ENSIA IMPACT</div>
       <button id="newChatBtn" class="new-chat">+ New chat</button>
+      <button id="themeBtn" class="new-chat">Toggle theme</button>
+      <button id="exportBtn" class="new-chat">Export chat</button>
       <div class="sidebar-note">Local model mode</div>
       <div class="sidebar-note">When backend is unavailable, chat is disabled automatically.</div>
+      <label for="apiBaseInput" class="sidebar-note">API base URL (optional)</label>
+      <input id="apiBaseInput" class="api-base" type="text" placeholder="http://127.0.0.1:8000" />
+      <button id="saveApiBtn" class="new-chat">Save endpoint</button>
     </aside>
 
     <main class="chat-main">
@@ -22,6 +27,12 @@
       </header>
 
       <section id="chat" class="chat-thread"></section>
+
+      <section id="quickPrompts" class="quick-prompts">
+        <button type="button" class="prompt-chip" data-q="What are current partnerships with ENSIA IMPACT?">Partnerships</button>
+        <button type="button" class="prompt-chip" data-q="Show me recent ENSIA IMPACT events timeline.">Events timeline</button>
+        <button type="button" class="prompt-chip" data-q="Is there any resource about DataCamp in this server?">DataCamp resources</button>
+      </section>
 
       <form id="chatForm" class="composer">
         <label for="messageInput" class="sr-only">Message input</label>

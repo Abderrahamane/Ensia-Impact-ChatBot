@@ -239,6 +239,9 @@ Files:
 - `deploy/windows/start_ensia_stack.bat`
 - `deploy/windows/ensia_stack_on_boot.xml`
 - `deploy/windows/install_task.bat`
+- `deploy/windows/uninstall_task.bat`
+- `deploy/windows/ensia_health_tray.ps1`
+- `deploy/windows/start_tray_monitor.bat`
 
 Install scheduled task (run as administrator CMD):
 
@@ -251,6 +254,30 @@ Manual test:
 
 ```cmd
 schtasks /Run /TN "ENSIA_IMPACT_Stack_OnBoot"
+```
+
+Uninstall startup task:
+
+```cmd
+deploy\windows\uninstall_task.bat
+```
+
+Run tray health monitor (shows web/bot/api status):
+
+```cmd
+powershell -NoProfile -ExecutionPolicy Bypass -File deploy\windows\ensia_health_tray.ps1
+```
+
+One double-click launcher:
+
+```cmd
+deploy\windows\start_tray_monitor.bat
+```
+
+Quick one-shot health check (no tray):
+
+```cmd
+powershell -NoProfile -ExecutionPolicy Bypass -File deploy\windows\ensia_health_tray.ps1 -Once
 ```
 
 Logs are written to:
@@ -266,6 +293,20 @@ Logs are written to:
 - `ensia-impact-bot` (Telegram worker)
 
 Note: while model inference stays local on your laptop, remote web/worker deployment cannot access local inference unless you later expose/migrate backend inference endpoint (recommended in datacenter phase).
+
+Frontend-only deploy notes:
+
+- You can deploy only `web/static` to any static host (Vercel/Netlify/GitHub Pages).
+- A ready Vercel config is provided at `deploy/frontend/vercel.json`.
+- In deployed frontend, use the sidebar field `API base URL` and click `Save endpoint`.
+- Set it to your reachable backend URL (for now local or tunneled endpoint, later datacenter API).
+
+Examples:
+
+```text
+http://127.0.0.1:8000
+https://your-backend-domain.example
+```
 
 Media extraction notes:
 
