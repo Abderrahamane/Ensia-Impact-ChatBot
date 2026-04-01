@@ -124,6 +124,17 @@ class RAGEngine:
 		self._structured_events: list[dict[str, Any]] = []
 		self._load_structured_tables()
 
+	def warmup(self) -> None:
+		"""Preload heavy retrieval components to reduce first-query latency."""
+		try:
+			self._ensure_bm25_corpus()
+		except Exception as err:
+			logger.warning("BM25 warm-up failed: %s", err)
+		try:
+			_ = self._get_cross_encoder()
+		except Exception as err:
+			logger.warning("Reranker warm-up failed: %s", err)
+
 	def retrieve(self, query: str, top_k: int | None = None) -> list[RetrievedChunk]:
 		k = top_k or self.top_k
 		pool_k = max(k, min(RERANK_CANDIDATES, k * 4))

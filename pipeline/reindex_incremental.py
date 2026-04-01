@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -22,7 +23,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from config import COLLECTION_NAME, EMBEDDING_MODEL, PROCESSED_DIR, VECTORSTORE_DIR
+from config import AUTO_REBUILD_STRUCTURED_ON_REINDEX, COLLECTION_NAME, EMBEDDING_MODEL, PROCESSED_DIR, VECTORSTORE_DIR
 from pipeline.chunk_and_embed import build_chunks
 from pipeline.parse_json import JSON_FILE, parse_messages
 
@@ -134,6 +135,13 @@ def main() -> None:
     print("Incremental re-index complete.")
     print(f"Chunks upserted: {len(new_chunks)}")
     print(f"Current collection count: {collection.count()}")
+
+      if AUTO_REBUILD_STRUCTURED_ON_REINDEX:
+        try:
+          subprocess.Popen([sys.executable, str(ROOT_DIR / "pipeline" / "build_structured_tables.py")], cwd=str(ROOT_DIR))
+          print("Triggered background structured-table rebuild.")
+        except Exception as err:
+          print(f"Warning: could not trigger background structured rebuild: {err}")
 
 
 if __name__ == "__main__":

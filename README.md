@@ -26,6 +26,12 @@ RAG-powered chatbot over Telegram-exported ENSIA IMPACT content.
 - UX transparency commands:
   - `/why` explains why last answer was chosen (intent, top entities, top source)
   - `/mode` shows current backend, reranker models, and confidence thresholds
+  - `/commands` lists all available commands with brief descriptions
+  - `/feedback_buttons on|off` toggles wrong/correct feedback buttons for your chat
+- Feedback controls in bot answers:
+  - `Wrong answer` button stores full query/mode/sources snapshot
+  - `Correct answer` button stores validated snapshots and reinforces successful patterns
+  - admin command `/feedback_stats` shows live per-query wrong/correct counters
 
 ## Important current behavior
 
@@ -34,6 +40,27 @@ RAG-powered chatbot over Telegram-exported ENSIA IMPACT content.
 - If your message looks ENSIA-related (internships, partnerships, incubator, FYP, events, etc.), the bot runs RAG and can attach sources depending on your `/sources` preference.
 - This avoids irrelevant retrieval answers for pure chat while keeping ENSIA answers grounded.
 - Bot replies are polished to match user language style (Arabic/French/English headers and smalltalk tone).
+- Source deep-linking is included when URLs are available in source metadata.
+
+## Production hardening (implemented)
+
+- Response caching for repeated questions:
+  - `ENSIA_BOT_CACHE_ENABLED`
+  - `ENSIA_BOT_CACHE_TTL_SECONDS`
+  - `ENSIA_BOT_CACHE_MAX_ITEMS`
+- Warm-up on startup (intent router + RAG reranker/BM25):
+  - `ENSIA_BOT_WARMUP_ON_START`
+- Feedback-adaptive behavior:
+  - repeated wrong votes push stricter answers/clarification
+  - repeated correct votes reinforce current response path
+  - controls: `ENSIA_FEEDBACK_ADAPTATION_ENABLED`, `ENSIA_FEEDBACK_WRONG_THRESHOLD`, `ENSIA_FEEDBACK_CORRECT_THRESHOLD`
+- Background structured-table rebuild after incremental reindex:
+  - `ENSIA_AUTO_REBUILD_STRUCTURED_ON_REINDEX=1`
+
+Secrets hygiene (required):
+
+- Rotate exposed tokens immediately (Telegram/Groq keys).
+- Keep `.env` out of git and replace shared credentials with placeholders.
 
 ## Phase 1 quick wins (implemented)
 

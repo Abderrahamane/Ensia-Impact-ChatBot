@@ -25,10 +25,17 @@ if str(ROOT_DIR) not in sys.path:
 
 from config import (
 	ADMIN_USER_IDS,
+	BOT_CACHE_ENABLED,
+	BOT_CACHE_MAX_ITEMS,
+	BOT_CACHE_TTL_SECONDS,
 	BOT_COOLDOWN_SECONDS,
 	BOT_RATE_LIMIT_PER_MINUTE,
 	BOT_RETRY_COUNT,
 	BOT_TIMEOUT_SECONDS,
+	BOT_WARMUP_ON_START,
+	FEEDBACK_ADAPTATION_ENABLED,
+	FEEDBACK_CORRECT_THRESHOLD,
+	FEEDBACK_WRONG_THRESHOLD,
 	GENERATION_BACKEND,
 	FEEDBACK_PATH,
 	GEMINI_API_KEY,
@@ -112,6 +119,7 @@ engine: RAGEngine | None = None
 request_timestamps: dict[int, deque[float]] = defaultdict(deque)
 last_request_ts: dict[int, float] = {}
 user_sources_pref: dict[str, bool] = {}
+user_feedback_buttons_pref: dict[str, bool] = {}
 bot_started_at = time.time()
 runtime_metrics: dict[str, Any] = {
 	"queries_total": 0,
@@ -122,6 +130,8 @@ runtime_metrics: dict[str, Any] = {
 intent_router: IntentRouter | None = None
 pending_clarifications: dict[int, str] = {}
 last_answer_snapshot: dict[int, dict[str, Any]] = {}
+response_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+feedback_profile: dict[str, dict[str, int]] = {}
 
 SMALLTALK_KEYWORDS = {
 	"en": {"hi", "hello", "hey", "how are you", "who are you", "what are you", "thanks", "thank you", "bye", "good morning", "good evening"},
@@ -148,18 +158,33 @@ TYPO_ALIASES = {
 
 
 def load_user_prefs() -> None:
-	global user_sources_pref
+	global user_sources_pref, user_feedback_buttons_pref
 	if USER_PREFS_FILE.exists():
 		try:
-			user_sources_pref = json.loads(USER_PREFS_FILE.read_text(encoding="utf-8"))
+			payload = json.loads(USER_PREFS_FILE.read_text(encoding="utf-8"))
+			if isinstance(payload, dict) and "sources" in payload:
+				user_sources_pref = payload.get("sources", {}) or {}
+				user_feedback_buttons_pref = payload.get("feedback_buttons", {}) or {}
+			else:
+				# Backward compatibility with older file format: user_id -> sources_enabled
+				user_sources_pref = payload if isinstance(payload, dict) else {}
+				user_feedback_buttons_pref = {}
 		except Exception:
 			user_sources_pref = {}
+			user_feedback_buttons_pref = {}
 
 
 def save_user_prefs() -> None:
 	USER_PREFS_FILE.parent.mkdir(parents=True, exist_ok=True)
 	USER_PREFS_FILE.write_text(
-		json.dumps(user_sources_pref, ensure_ascii=False, indent=2),
+		json.dumps(
+			{
+				"sources": user_sources_pref,
+				"feedback_buttons": user_feedback_buttons_pref,
+			},
+			ensure_ascii=False,
+			indent=2,
+		),
 		encoding="utf-8",
 	)
 
@@ -197,6 +222,15 @@ def set_sources_pref(user_id: int, enabled: bool) -> None:
 	save_user_prefs()
 
 
+def get_feedback_buttons_pref(user_id: int) -> bool:
+	return user_feedback_buttons_pref.get(str(user_id), True)
+
+
+def set_feedback_buttons_pref(user_id: int, enabled: bool) -> None:
+	user_feedback_buttons_pref[str(user_id)] = enabled
+	save_user_prefs()
+
+
 def write_feedback(update: Any, text: str, snapshot: dict[str, Any] | None = None) -> None:
 	FEEDBACK_PATH.parent.mkdir(parents=True, exist_ok=True)
 	record = {
@@ -212,9 +246,56 @@ def write_feedback(update: Any, text: str, snapshot: dict[str, Any] | None = Non
 		f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
+def load_feedback_profile() -> None:
+	if not FEEDBACK_PATH.exists() or not FEEDBACK_ADAPTATION_ENABLED:
+		return
+	try:
+		for line in FEEDBACK_PATH.read_text(encoding="utf-8").splitlines():
+			if not line.strip():
+				continue
+			rec = json.loads(line)
+			snapshot = rec.get("snapshot") or {}
+			text = rec.get("text")
+			if text == "wrong_answer_button":
+				_update_feedback_profile(snapshot, "wrong")
+			elif text == "correct_answer_button":
+				_update_feedback_profile(snapshot, "correct")
+	except Exception as err:
+		logging.warning("feedback_profile_load_failed: %s", err)
+
+
+def _normalize_query_key(text: str) -> str:
+	return re.sub(r"\s+", " ", text.strip().lower())
+
+
+def _update_feedback_profile(snapshot: dict[str, Any], vote: str) -> None:
+	if not FEEDBACK_ADAPTATION_ENABLED:
+		return
+	q = _normalize_query_key(str(snapshot.get("query") or ""))
+	if not q:
+		return
+	entry = feedback_profile.setdefault(q, {"correct": 0, "wrong": 0})
+	if vote == "correct":
+		entry["correct"] += 1
+	elif vote == "wrong":
+		entry["wrong"] += 1
+
+
+def _feedback_signal(query: str) -> dict[str, bool]:
+	entry = feedback_profile.get(_normalize_query_key(query), {"correct": 0, "wrong": 0})
+	wrong = int(entry.get("wrong", 0))
+	correct = int(entry.get("correct", 0))
+	prefer_strict = wrong >= FEEDBACK_WRONG_THRESHOLD and wrong >= (correct + 2)
+	prefer_cached = correct >= FEEDBACK_CORRECT_THRESHOLD and correct >= (wrong + 1)
+	return {"prefer_strict": prefer_strict, "prefer_cached": prefer_cached}
+
+
 def _build_feedback_keyboard() -> InlineKeyboardMarkup:
 	return InlineKeyboardMarkup(
-		[[InlineKeyboardButton("Wrong answer", callback_data="feedback:wrong")]]
+		[[
+			InlineKeyboardButton("Wrong answer", callback_data="feedback:wrong"),
+			InlineKeyboardButton("Correct answer", callback_data="feedback:correct"),
+		]]
 	)
 
 
@@ -226,7 +307,21 @@ async def wrong_answer_callback(update: Any, context: ContextTypes.DEFAULT_TYPE)
 	user_id = update.effective_user.id
 	snapshot = last_answer_snapshot.get(user_id, {})
 	write_feedback(update, "wrong_answer_button", snapshot=snapshot)
+	_update_feedback_profile(snapshot, "wrong")
+	response_cache.pop(_normalize_query_key(str(snapshot.get("query") or "")), None)
 	await query.message.reply_text("Thanks, I saved this as a wrong-answer case for evaluation.")
+
+
+async def correct_answer_callback(update: Any, context: ContextTypes.DEFAULT_TYPE) -> None:
+	if not update.callback_query or not update.effective_user:
+		return
+	query = update.callback_query
+	await query.answer("Thanks, feedback received.")
+	user_id = update.effective_user.id
+	snapshot = last_answer_snapshot.get(user_id, {})
+	write_feedback(update, "correct_answer_button", snapshot=snapshot)
+	_update_feedback_profile(snapshot, "correct")
+	await query.message.reply_text("Great, I saved this as a correct-answer case.")
 
 
 def check_rate_limit(user_id: int) -> tuple[bool, str | None]:
@@ -249,13 +344,26 @@ def check_rate_limit(user_id: int) -> tuple[bool, str | None]:
 
 
 async def query_with_retry(question: str) -> dict[str, Any]:
+	cache_key = _normalize_query_key(question)
+	if BOT_CACHE_ENABLED and cache_key in response_cache:
+		ts, cached = response_cache[cache_key]
+		if (time.time() - ts) <= BOT_CACHE_TTL_SECONDS:
+			return cached
+		response_cache.pop(cache_key, None)
+
 	last_error: Exception | None = None
 	for attempt in range(1, BOT_RETRY_COUNT + 2):
 		try:
-			return await asyncio.wait_for(
+			result = await asyncio.wait_for(
 				asyncio.to_thread(get_engine().answer_query, question),
 				timeout=BOT_TIMEOUT_SECONDS,
 			)
+			if BOT_CACHE_ENABLED:
+				response_cache[cache_key] = (time.time(), result)
+				if len(response_cache) > BOT_CACHE_MAX_ITEMS:
+					oldest_key = min(response_cache.items(), key=lambda x: x[1][0])[0]
+					response_cache.pop(oldest_key, None)
+			return result
 		except Exception as err:
 			last_error = err
 			if attempt <= BOT_RETRY_COUNT:
@@ -277,15 +385,61 @@ async def help_command(update: Any, context: ContextTypes.DEFAULT_TYPE) -> None:
 		"Send any question in Arabic, French, or English.\n"
 		"Example: 'Where can I find internship opportunities in AI?'\n\n"
 		"Commands:\n"
+		"/commands - list all commands\n"
 		"/sources on|off - show or hide sources\n"
+		"/feedback_buttons on|off - enable/disable feedback buttons\n"
 		"/why - explain why last answer was chosen\n"
 		"/mode - show backend/reranker/confidence settings\n"
 		"/feedback <text> - send feedback\n"
+		"/feedback_stats - admin feedback counters\n"
 		"/admins - check your admin status\n"
 		"/health - admin health check\n"
 		"/stats - admin runtime stats\n"
 		"/backup_now [dry] - admin backup trigger"
 	)
+
+
+async def commands_command(update: Any, context: ContextTypes.DEFAULT_TYPE) -> None:
+	if not update.message:
+		return
+	await update.message.reply_text(
+		"Available commands:\n"
+		"/start - introduce the assistant\n"
+		"/help - quick usage help\n"
+		"/commands - list all commands\n"
+		"/sources on|off - show/hide source lines\n"
+		"/feedback_buttons on|off - enable/disable feedback buttons\n"
+		"/why - explain why the last answer was chosen\n"
+		"/mode - show backend, reranker, and thresholds\n"
+		"/feedback <text> - save textual feedback\n"
+		"/admins - check admin status\n"
+		"/health - admin runtime health\n"
+		"/stats - admin runtime/data stats\n"
+		"/backup_now [dry] - admin backup trigger\n"
+		"/feedback_stats - admin per-query correct/wrong counters"
+	)
+
+
+async def feedback_stats_command(update: Any, context: ContextTypes.DEFAULT_TYPE) -> None:
+	if not await _require_admin(update):
+		return
+	if not update.message:
+		return
+	if not feedback_profile:
+		await update.message.reply_text("No feedback counters yet.")
+		return
+
+	rows = sorted(
+		feedback_profile.items(),
+		key=lambda kv: int(kv[1].get("wrong", 0)) + int(kv[1].get("correct", 0)),
+		reverse=True,
+	)
+	lines = ["Feedback stats (top queries):"]
+	for query_key, counters in rows[:15]:
+		wrong = int(counters.get("wrong", 0))
+		correct = int(counters.get("correct", 0))
+		lines.append(f"- wrong={wrong} | correct={correct} | {query_key[:90]}")
+	await update.message.reply_text("\n".join(lines))
 
 
 def _detect_language(text: str, user_lang_code: str | None = None) -> str:
@@ -475,6 +629,25 @@ async def sources_command(update: Any, context: ContextTypes.DEFAULT_TYPE) -> No
 
 	set_sources_pref(update.effective_user.id, value == "on")
 	await update.message.reply_text(f"Sources display set to {value}.")
+
+
+async def feedback_buttons_command(update: Any, context: ContextTypes.DEFAULT_TYPE) -> None:
+	if not update.message or not update.effective_user:
+		return
+	if not context.args:
+		state = "on" if get_feedback_buttons_pref(update.effective_user.id) else "off"
+		await update.message.reply_text(
+			f"Feedback buttons are currently {state}. Use /feedback_buttons on or /feedback_buttons off"
+		)
+		return
+
+	value = context.args[0].strip().lower()
+	if value not in {"on", "off"}:
+		await update.message.reply_text("Usage: /feedback_buttons on|off")
+		return
+
+	set_feedback_buttons_pref(update.effective_user.id, value == "on")
+	await update.message.reply_text(f"Feedback buttons set to {value}.")
 
 
 async def feedback_command(update: Any, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -700,6 +873,14 @@ async def handle_message(update: Any, context: ContextTypes.DEFAULT_TYPE) -> Non
 		question = f"{base_q}\nClarification from user: {question}"
 	intent = detect_intent(question)
 	intent_score = round(ensia_intent_score(question), 3)
+	if FEEDBACK_ADAPTATION_ENABLED:
+		signal = _feedback_signal(question)
+		if signal["prefer_strict"]:
+			question = (
+				question
+				+ "\nOperator note: Similar previous answers were marked wrong by multiple users. "
+				+ "Be stricter with context and ask clarification if uncertain."
+			)
 
 	if intent == "smalltalk":
 		reply = build_smalltalk_reply(question, lang=lang)
@@ -777,7 +958,10 @@ async def handle_message(update: Any, context: ContextTypes.DEFAULT_TYPE) -> Non
 		},
 	)
 
-	await update.message.reply_text(answer, reply_markup=_build_feedback_keyboard())
+	if get_feedback_buttons_pref(user_id):
+		await update.message.reply_text(answer, reply_markup=_build_feedback_keyboard())
+	else:
+		await update.message.reply_text(answer)
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -792,8 +976,10 @@ def main() -> None:
 	application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 	application.add_error_handler(error_handler)
 	load_user_prefs()
+	load_feedback_profile()
 	application.add_handler(CommandHandler("start", start))
 	application.add_handler(CommandHandler("help", help_command))
+	application.add_handler(CommandHandler("commands", commands_command))
 	application.add_handler(CommandHandler("why", why_command))
 	application.add_handler(CommandHandler("mode", mode_command))
 	application.add_handler(CommandHandler("admins", admins_command))
@@ -801,9 +987,20 @@ def main() -> None:
 	application.add_handler(CommandHandler("stats", stats_command))
 	application.add_handler(CommandHandler("backup_now", backup_now_command))
 	application.add_handler(CommandHandler("sources", sources_command))
+	application.add_handler(CommandHandler("feedback_buttons", feedback_buttons_command))
 	application.add_handler(CommandHandler("feedback", feedback_command))
+	application.add_handler(CommandHandler("feedback_stats", feedback_stats_command))
 	application.add_handler(CallbackQueryHandler(wrong_answer_callback, pattern=r"^feedback:wrong$"))
+	application.add_handler(CallbackQueryHandler(correct_answer_callback, pattern=r"^feedback:correct$"))
 	application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+	if BOT_WARMUP_ON_START:
+		try:
+			_ = get_intent_router()
+			eng = get_engine()
+			eng.warmup()
+			logging.info("bot_warmup_ok", extra={"event": "bot_warmup_ok", "meta": {"intent_router": INTENT_CLASSIFIER_ENABLED}})
+		except Exception as err:
+			logging.warning("bot_warmup_failed", extra={"event": "bot_warmup_failed", "meta": {"error": str(err)}})
 	logging.info(
 		"bot_started",
 		extra={
