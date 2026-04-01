@@ -1,0 +1,13 @@
+{
+  "summary": {
+    "overall": {
+      "cases": 5,
+      "intent_accuracy": 1.0,
+      "hit@1": 0.8,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "groundedness": 0.2354,
+      "citation_usefulness": 1.0
+    }
+  }
+}

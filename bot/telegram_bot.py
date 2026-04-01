@@ -15,7 +15,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import CallbackQueryHandler
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
@@ -110,6 +112,8 @@ runtime_metrics: dict[str, Any] = {
 	"last_error": None,
 }
 intent_router: IntentRouter | None = None
+pending_clarifications: dict[int, str] = {}
+last_answer_snapshot: dict[int, dict[str, Any]] = {}
 
 SMALLTALK_KEYWORDS = {
 	"en": {"hi", "hello", "hey", "how are you", "who are you", "what are you", "thanks", "thank you", "bye", "good morning", "good evening"},
@@ -185,7 +189,7 @@ def set_sources_pref(user_id: int, enabled: bool) -> None:
 	save_user_prefs()
 
 
-def write_feedback(update: Any, text: str) -> None:
+def write_feedback(update: Any, text: str, snapshot: dict[str, Any] | None = None) -> None:
 	FEEDBACK_PATH.parent.mkdir(parents=True, exist_ok=True)
 	record = {
 		"timestamp": datetime.now(UTC).isoformat(),
@@ -194,8 +198,27 @@ def write_feedback(update: Any, text: str) -> None:
 		"chat_id": update.effective_chat.id if update.effective_chat else None,
 		"text": text,
 	}
+	if snapshot:
+		record["snapshot"] = snapshot
 	with open(FEEDBACK_PATH, "a", encoding="utf-8") as f:
 		f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def _build_feedback_keyboard() -> InlineKeyboardMarkup:
+	return InlineKeyboardMarkup(
+		[[InlineKeyboardButton("Wrong answer", callback_data="feedback:wrong")]]
+	)
+
+
+async def wrong_answer_callback(update: Any, context: ContextTypes.DEFAULT_TYPE) -> None:
+	if not update.callback_query or not update.effective_user:
+		return
+	query = update.callback_query
+	await query.answer("Thanks, feedback received.")
+	user_id = update.effective_user.id
+	snapshot = last_answer_snapshot.get(user_id, {})
+	write_feedback(update, "wrong_answer_button", snapshot=snapshot)
+	await query.message.reply_text("Thanks, I saved this as a wrong-answer case for evaluation.")
 
 
 def check_rate_limit(user_id: int) -> tuple[bool, str | None]:
@@ -587,6 +610,9 @@ async def handle_message(update: Any, context: ContextTypes.DEFAULT_TYPE) -> Non
 		return
 
 	question = update.message.text.strip()
+	if user_id in pending_clarifications:
+		base_q = pending_clarifications.pop(user_id)
+		question = f"{base_q}\nClarification from user: {question}"
 	intent = detect_intent(question)
 	intent_score = round(ensia_intent_score(question), 3)
 
@@ -612,25 +638,36 @@ async def handle_message(update: Any, context: ContextTypes.DEFAULT_TYPE) -> Non
 		runtime_metrics["last_error"] = str(err)
 		logging.error(
 			"bot_query_failed",
-			extra={"event": "bot_query_failed", "meta": {"user_id": user_id, "error": str(err)}},
+			extra={"event": "bot_query_failed", "meta": {"user_id": user_id, "error": str(err), "query": question[:220]}},
 		)
 		await update.message.reply_text("Sorry, I could not process your question right now. Please try again.")
 		return
 
 	answer = result["answer"]
+	last_answer_snapshot[user_id] = {
+		"query": update.message.text.strip(),
+		"mode": result.get("mode"),
+		"intent_type": result.get("intent_type"),
+		"needs_clarification": result.get("needs_clarification"),
+		"sources": result.get("sources", [])[:5],
+		"generation_error": result.get("generation_error"),
+	}
+	if result.get("needs_clarification"):
+		pending_clarifications[user_id] = update.message.text.strip()
 	latency_ms = round((time.perf_counter() - started) * 1000, 2)
 
 	show_sources = get_sources_pref(user_id)
 	mode = str(result.get("mode") or "")
-	if show_sources and result["sources"] and "general" not in mode:
+	if show_sources and result["sources"] and "general" not in mode and mode != "needs-clarification":
 		media_sources = _select_media_sources(result["sources"])
 		if media_sources:
 			top_sources = media_sources[:2]
 			lines = ["\n\nSources:"]
 			for src, label in top_sources:
 				topic = _clean_source_preview(src)
+				trust = (src.get("trust") or "medium").lower()
 				lines.append(
-					f"- {src['date']} | {src['from']} | {label} | {topic} (msg {src['message_id']})"
+					f"- {src['date']} | {src['from']} | {label} | trust={trust} | {topic} (msg {src['message_id']})"
 				)
 			answer += "\n" + "\n".join(lines)
 
@@ -640,6 +677,7 @@ async def handle_message(update: Any, context: ContextTypes.DEFAULT_TYPE) -> Non
 			"event": "bot_query_ok",
 			"meta": {
 				"user_id": user_id,
+				"query": question[:220],
 				"intent_score": intent_score,
 				"mode": result.get("mode"),
 				"generation_error": result.get("generation_error"),
@@ -649,7 +687,7 @@ async def handle_message(update: Any, context: ContextTypes.DEFAULT_TYPE) -> Non
 		},
 	)
 
-	await update.message.reply_text(answer)
+	await update.message.reply_text(answer, reply_markup=_build_feedback_keyboard())
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -672,6 +710,7 @@ def main() -> None:
 	application.add_handler(CommandHandler("backup_now", backup_now_command))
 	application.add_handler(CommandHandler("sources", sources_command))
 	application.add_handler(CommandHandler("feedback", feedback_command))
+	application.add_handler(CallbackQueryHandler(wrong_answer_callback, pattern=r"^feedback:wrong$"))
 	application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 	logging.info(
 		"bot_started",

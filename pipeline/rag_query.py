@@ -11,6 +11,7 @@ import os
 import re
 import sys
 import time
+from datetime import datetime
 from collections import Counter
 from urllib import error, request
 from dataclasses import dataclass
@@ -168,7 +169,28 @@ class RAGEngine:
 		deduped = self._dedupe_by_message_id(boosted)
 		deduped = self._inject_structured_chunks(rewritten_query, deduped)
 		diverse = self._select_diverse_chunks(deduped)
-		return diverse[:k]
+		entity_first = self._force_entity_first(rewritten_query, diverse, min_entity_chunks=2)
+		return entity_first[:k]
+
+	def _force_entity_first(self, query: str, chunks: list[RetrievedChunk], min_entity_chunks: int = 2) -> list[RetrievedChunk]:
+		entities = self._extract_entities(query)
+		if not any(entities.values()):
+			return chunks
+		entity_hits: list[RetrievedChunk] = []
+		others: list[RetrievedChunk] = []
+		for c in chunks:
+			text_l = c.text.lower()
+			matched = any(e in text_l for e in entities["company"]) or any(e in text_l for e in entities["event"]) or any(e in text_l for e in entities["date"])
+			if matched:
+				entity_hits.append(c)
+			else:
+				others.append(c)
+		if not entity_hits:
+			return chunks
+		# Ensure 1-2 entity-matching chunks are always kept at the top.
+		forced = entity_hits[:min_entity_chunks]
+		remaining = [c for c in entity_hits[min_entity_chunks:] + others if c not in forced]
+		return forced + remaining
 
 	def _rewrite_query_for_retrieval(self, query: str) -> str:
 		rewritten = self._normalize_query_typos(query)
@@ -1002,8 +1024,101 @@ class RAGEngine:
 			clean += "\n\nIf unsure: Please provide a more specific ENSIA question (company, date, event, or keyword)."
 		return clean
 
-	def _finalize_answer(self, answer: str, mode: str, generation_error: str | None) -> tuple[str, str, str | None]:
-		return self._enforce_answer_structure(answer), mode, generation_error
+	def _dedupe_answer_facts(self, text: str) -> str:
+		lines = [ln.rstrip() for ln in text.splitlines()]
+		seen: set[str] = set()
+		out: list[str] = []
+		for ln in lines:
+			norm = re.sub(r"\W+", " ", ln.lower()).strip()
+			if ln.strip().startswith("-"):
+				if norm in seen:
+					continue
+				seen.add(norm)
+			out.append(ln)
+		return "\n".join(out).strip()
+
+	def _format_answer_by_intent(self, query: str, answer: str, chunks: list[RetrievedChunk]) -> str:
+		intent = self._query_intent_type(query)
+		if intent == "partnership":
+			partners: list[str] = []
+			if self._structured_partners:
+				partners = [str(p.get("name", "")).strip() for p in self._structured_partners if str(p.get("name", "")).strip()]
+				partners = list(dict.fromkeys(partners))
+			else:
+				for c in chunks:
+					for p in re.findall(r"\b[A-Z][A-Za-z]{2,}(?:\s+[A-Z][A-Za-z]{2,})*\b", c.text):
+						if p.lower() in {"source", "direct", "key", "if", "ensia", "impact", "structured"}:
+							continue
+						if p not in partners:
+							partners.append(p)
+			if partners:
+				rows = "\n".join(f"- {name}" for name in partners[:12])
+				return (
+					"Direct answer: Here is a table-style list of partnerships found in ENSIA context.\n\n"
+					f"Key points:\n{rows}\n\n"
+					"If unsure: Ask for a specific company or year to narrow results."
+				)
+		if intent == "event":
+			timeline: list[str] = []
+			for c in chunks:
+				date = str(c.metadata.get("date", "")).strip()
+				preview = re.sub(r"\s+", " ", c.text).strip()[:95]
+				if date and preview:
+					line = f"- {date}: {preview}"
+					if line not in timeline:
+						timeline.append(line)
+			if timeline:
+				return (
+					"Direct answer: Here is a timeline of matching ENSIA events.\n\n"
+					f"Key points:\n{'\n'.join(timeline[:8])}\n\n"
+					"If unsure: Ask by year, event name, or organizer for more precise results."
+				)
+		if any(t in query.lower() for t in ["resource", "resources", "datacamp", "link", "materials"]):
+			links: list[str] = []
+			for c in chunks:
+				for m in re.findall(r"https?://\S+", c.text):
+					if m not in links:
+						links.append(m)
+			if links:
+				return (
+					"Direct answer: Here are the relevant resources found in ENSIA context.\n\n"
+					f"Key points:\n" + "\n".join(f"- {u}" for u in links[:8]) +
+					"\n\nIf unsure: Ask for a specific platform or topic (e.g., DataCamp, internship portal)."
+				)
+		return answer
+
+	def _finalize_answer(self, query: str, chunks: list[RetrievedChunk], answer: str, mode: str, generation_error: str | None) -> tuple[str, str, str | None]:
+		intent_shaped = self._format_answer_by_intent(query, answer, chunks)
+		structured = self._enforce_answer_structure(intent_shaped)
+		deduped = self._dedupe_answer_facts(structured)
+		return deduped, mode, generation_error
+
+	def _clarification_prompt(self, query: str) -> str:
+		intent = self._query_intent_type(query)
+		if intent == "partnership":
+			return "I need a quick clarification: do you mean school-company partnerships, incubator/startup partnerships, or research collaborations?"
+		if intent == "event":
+			return "I need a quick clarification: do you want ENSIA events by year, by topic, or registration links only?"
+		return "I need a quick clarification to improve accuracy: can you specify company, event name, year, or resource type?"
+
+	def _source_trust_label(self, query: str, chunk: RetrievedChunk) -> str:
+		score = float(chunk.score)
+		date = str(chunk.metadata.get("date", ""))
+		recency_bonus = 0.0
+		if date:
+			try:
+				dt = datetime.strptime(date, "%Y-%m-%d")
+				if dt.year >= 2025:
+					recency_bonus = 0.06
+			except Exception:
+				pass
+		entities = self._extract_entities(query)
+		text_l = chunk.text.lower()
+		entity_bonus = 0.08 if (
+			any(e in text_l for e in entities["company"]) or any(e in text_l for e in entities["event"]) or any(e in text_l for e in entities["date"])
+		) else 0.0
+		trust = score + recency_bonus + entity_bonus
+		return "high" if trust >= 0.62 else "medium"
 
 	def _general_fallback_enabled(self, has_chunks: bool, confident: bool) -> bool:
 		if not ALLOW_GENERAL_FALLBACK:
@@ -1020,15 +1135,15 @@ class RAGEngine:
 	def _generate_general(self, backend: str, query: str) -> tuple[str, str, str | None]:
 		try:
 			if backend == "gemini":
-				return self._finalize_answer(self._generate_with_gemini(query, [], strict_grounding=False), "gemini-general", None)
+				return self._finalize_answer(query, [], self._generate_with_gemini(query, [], strict_grounding=False), "gemini-general", None)
 			if backend == "groq":
-				return self._finalize_answer(self._generate_with_groq(query, [], strict_grounding=False), "groq-general", None)
+				return self._finalize_answer(query, [], self._generate_with_groq(query, [], strict_grounding=False), "groq-general", None)
 			if backend == "hf_lora":
-				return self._finalize_answer(self._generate_with_hf_lora(query, [], strict_grounding=False), "hf_lora-general", None)
+				return self._finalize_answer(query, [], self._generate_with_hf_lora(query, [], strict_grounding=False), "hf_lora-general", None)
 			if backend == "local_model_1":
-				return self._finalize_answer(self._generate_with_local_endpoint(query, [], LOCAL_MODEL_1, strict_grounding=False), "local_model_1-general", None)
+				return self._finalize_answer(query, [], self._generate_with_local_endpoint(query, [], LOCAL_MODEL_1, strict_grounding=False), "local_model_1-general", None)
 			if backend == "local_model_2":
-				return self._finalize_answer(self._generate_with_local_endpoint(query, [], LOCAL_MODEL_2, strict_grounding=False), "local_model_2-general", None)
+				return self._finalize_answer(query, [], self._generate_with_local_endpoint(query, [], LOCAL_MODEL_2, strict_grounding=False), "local_model_2-general", None)
 		except Exception as err:
 			return (
 				"General generation fallback failed. Please retry or switch generation backend.",
@@ -1043,6 +1158,10 @@ class RAGEngine:
 
 	def generate(self, query: str, chunks: list[RetrievedChunk]) -> tuple[str, str, str | None]:
 		backend = self._resolve_generation_backend()
+		intent_type = self._query_intent_type(query)
+		query_terms = [t for t in re.findall(r"\w+", query.lower()) if len(t) > 2]
+		if intent_type in {"partnership", "event"} and len(query_terms) <= 2:
+			return self._clarification_prompt(query), "needs-clarification", "underspecified_query"
 		if not chunks:
 			if self._general_fallback_enabled(has_chunks=False, confident=False):
 				return self._generate_general(backend, query)
@@ -1055,6 +1174,8 @@ class RAGEngine:
 
 		confident, confidence_reason = self._has_confident_context(query, chunks)
 		if not confident:
+			if intent_type in {"partnership", "event"}:
+				return self._clarification_prompt(query), "needs-clarification", confidence_reason
 			if self._general_fallback_enabled(has_chunks=True, confident=False):
 				return self._generate_general(backend, query)
 			return (
@@ -1067,7 +1188,7 @@ class RAGEngine:
 		def finalize_failure(err: Exception) -> tuple[str, str, str | None]:
 			safe_err = self._sanitize_error(err)
 			if ALLOW_EXTRACTIVE_FALLBACK:
-				return self._finalize_answer(self._generate_extractive(query, chunks), "extractive-fallback", safe_err)
+				return self._finalize_answer(query, chunks, self._generate_extractive(query, chunks), "extractive-fallback", safe_err)
 			return (
 				"Generation failed for the selected backend and extractive fallback is disabled. "
 				"Please retry, switch backend, or check provider credentials/connectivity.",
@@ -1077,47 +1198,52 @@ class RAGEngine:
 
 		if backend == "gemini":
 			try:
-				return self._finalize_answer(self._generate_with_gemini(query, chunks, strict_grounding=True), "gemini", None)
+				return self._finalize_answer(query, chunks, self._generate_with_gemini(query, chunks, strict_grounding=True), "gemini", None)
 			except Exception as err:
 				return finalize_failure(err)
 
 		if backend == "groq":
 			try:
-				return self._finalize_answer(self._generate_with_groq(query, chunks, strict_grounding=True), "groq", None)
+				return self._finalize_answer(query, chunks, self._generate_with_groq(query, chunks, strict_grounding=True), "groq", None)
 			except Exception as err:
 				return finalize_failure(err)
 
 		if backend == "hf_lora":
 			try:
-				return self._finalize_answer(self._generate_with_hf_lora(query, chunks, strict_grounding=True), "hf_lora", None)
+				return self._finalize_answer(query, chunks, self._generate_with_hf_lora(query, chunks, strict_grounding=True), "hf_lora", None)
 			except Exception as err:
 				return finalize_failure(err)
 
 		if backend == "local_model_1":
 			try:
-				return self._finalize_answer(self._generate_with_local_endpoint(query, chunks, LOCAL_MODEL_1, strict_grounding=True), "local_model_1", None)
+				return self._finalize_answer(query, chunks, self._generate_with_local_endpoint(query, chunks, LOCAL_MODEL_1, strict_grounding=True), "local_model_1", None)
 			except Exception as err:
 				return finalize_failure(err)
 
 		if backend == "local_model_2":
 			try:
-				return self._finalize_answer(self._generate_with_local_endpoint(query, chunks, LOCAL_MODEL_2, strict_grounding=True), "local_model_2", None)
+				return self._finalize_answer(query, chunks, self._generate_with_local_endpoint(query, chunks, LOCAL_MODEL_2, strict_grounding=True), "local_model_2", None)
 			except Exception as err:
 				return finalize_failure(err)
 
-		return self._finalize_answer(self._generate_extractive(query, chunks), "extractive", None)
+		return self._finalize_answer(query, chunks, self._generate_extractive(query, chunks), "extractive", None)
 
 	def answer_query(self, query: str, top_k: int | None = None) -> dict[str, Any]:
 		chunks = self.retrieve(query, top_k=top_k)
 		answer, mode, generation_error = self.generate(query, chunks)
+		intent_type = self._query_intent_type(query)
+		needs_clarification = mode == "needs-clarification"
 		return {
 			"query": query,
 			"answer": answer,
 			"mode": mode,
+			"intent_type": intent_type,
+			"needs_clarification": needs_clarification,
 			"generation_error": generation_error,
 			"sources": [
 				{
 					"score": round(c.score, 4),
+					"trust": self._source_trust_label(query, c),
 					"date": c.metadata.get("date", ""),
 					"from": c.metadata.get("from", ""),
 					"message_id": c.metadata.get("message_id", ""),

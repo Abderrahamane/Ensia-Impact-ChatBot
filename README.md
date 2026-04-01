@@ -64,6 +64,21 @@ RAG-powered chatbot over Telegram-exported ENSIA IMPACT content.
     - `data/processed/events_timeline.json`
   - these tables are injected into retrieval context for exact partnership/event answers
 
+Additional high-impact upgrades (implemented):
+
+- Clarification loop on low confidence:
+  - for partnership/event intents, bot asks a follow-up question instead of giving a loose answer
+- Structured answer mode by intent:
+  - partnerships -> table-style partner list
+  - events -> timeline-style bullets
+  - resources -> link list when URLs are present
+- Hybrid retriever v2 (entity-first):
+  - forces 1-2 entity-matching chunks into final context when company/date/event entities are detected
+- Source trust scoring:
+  - each source now includes a trust label (`high` or `medium`) based on score, recency, and entity match
+- Answer-level fact dedup:
+  - repeated bullet facts are removed in final post-processing
+
 Build/update Phase 2 artifacts:
 
 ```cmd
@@ -273,6 +288,47 @@ The evaluator tracks:
 
 It writes a report to `tests/eval_rag_report.json` and exits with code `1`
 if thresholds are not met.
+
+## Critical quality + evaluation pipeline
+
+Build a failure benchmark set from logs and wrong-answer feedback:
+
+```cmd
+python tests/build_failure_benchmark.py --max-cases 100
+```
+
+Run the full quality pipeline (auto-eval + regression gate):
+
+```cmd
+python ops/run_quality_gate.py
+```
+
+This pipeline checks:
+
+- `intent_accuracy`
+- retrieval `hit@1`, `hit@3`, `hit@5`
+- `groundedness`
+- `citation_usefulness`
+
+Regression gate:
+
+- Baseline file: `tests/eval_baseline.json`
+- Current report: `tests/eval_rag_report.json`
+- Gate script: `tests/eval_regression_gate.py`
+- Fails with exit code `1` when metrics drop beyond tolerance
+
+CI automation:
+
+- GitHub Actions workflow runs on each push/PR: `.github/workflows/quality-gate.yml`
+
+Wrong-answer feedback button:
+
+- Bot replies include a `Wrong answer` button.
+- On click, snapshot is stored in `data/processed/feedback.jsonl` with:
+  - original query
+  - mode / intent type
+  - top sources
+  - generation error (if any)
 
 ## Project report (snapshot)
 

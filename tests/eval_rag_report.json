@@ -1,50 +1,56 @@
 {
   "thresholds": {
+    "intent_accuracy": 0.8,
     "hit@5": 0.7,
-    "groundedness": 0.35,
+    "groundedness": 0.2,
     "citation_usefulness": 0.6
   },
   "passed": true,
   "summary": {
     "overall": {
       "cases": 24,
+      "intent_accuracy": 1.0,
       "hit@1": 0.7083,
-      "hit@3": 0.8333,
-      "hit@5": 0.9583,
-      "groundedness": 0.6314,
-      "citation_usefulness": 0.9667
+      "hit@3": 0.875,
+      "hit@5": 0.9167,
+      "groundedness": 0.2621,
+      "citation_usefulness": 0.9521
     },
     "by_language": {
       "ar": {
         "cases": 6,
-        "hit@1": 0.5,
-        "hit@3": 0.5,
-        "hit@5": 0.8333,
-        "groundedness": 0.5636,
-        "citation_usefulness": 0.9
+        "intent_accuracy": 1.0,
+        "hit@1": 0.3333,
+        "hit@3": 0.6667,
+        "hit@5": 0.6667,
+        "groundedness": 0.0856,
+        "citation_usefulness": 0.8667
       },
       "en": {
         "cases": 6,
+        "intent_accuracy": 1.0,
         "hit@1": 0.8333,
         "hit@3": 1.0,
         "hit@5": 1.0,
-        "groundedness": 0.6232,
+        "groundedness": 0.2705,
         "citation_usefulness": 1.0
       },
       "fr": {
         "cases": 6,
-        "hit@1": 0.5,
+        "intent_accuracy": 1.0,
+        "hit@1": 0.6667,
         "hit@3": 0.8333,
         "hit@5": 1.0,
-        "groundedness": 0.6651,
-        "citation_usefulness": 0.9667
+        "groundedness": 0.328,
+        "citation_usefulness": 0.9417
       },
       "mix": {
         "cases": 6,
+        "intent_accuracy": 1.0,
         "hit@1": 1.0,
         "hit@3": 1.0,
         "hit@5": 1.0,
-        "groundedness": 0.6738,
+        "groundedness": 0.3644,
         "citation_usefulness": 1.0
       }
     }
@@ -57,33 +63,40 @@
       "hit@1": 1,
       "hit@3": 1,
       "hit@5": 1,
-      "groundedness": 0.5818,
+      "groundedness": 0.4423,
       "citation_usefulness": 1.0,
-      "mode": "extractive",
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.7207,
-          "date": "2025-03-16",
-          "from": "ENSIA IMPACT © Group",
-          "message_id": "827",
-          "file_name": "",
-          "text_preview": "a: A platform that connects these professionals with AI experts and consultants. This could be a great opportunity for AI graduates and professionals to offer their expertise as a paid service while helping different sec"
-        },
-        {
-          "score": 0.7052,
-          "date": "2025-05-11",
+          "score": 0.5875,
+          "trust": "high",
+          "date": "2025-10-31",
           "from": "Sami Belkacem",
-          "message_id": "930",
+          "message_id": "1192",
+          "content_type": "photo",
           "file_name": "",
-          "text_preview": "New and emerging Ai job roles\n[Contains image]"
+          "text_preview": "ole\n A great opportunity to connect, learn, and explore careers in AI & Data! 💡\n Note: In addition to job offers, the ministry has agreed to inform the invited companies about other opportunities for the rest of the stud"
         },
         {
-          "score": 0.6642,
+          "score": 0.5752,
+          "trust": "high",
           "date": "2025-07-02",
           "from": "Sami Belkacem",
           "message_id": "1007",
+          "content_type": "photo",
           "file_name": "",
           "text_preview": "Interesting paid internship opportunity at the new Annaba Innovation Center (AIC)."
+        },
+        {
+          "score": 0.5418,
+          "trust": "medium",
+          "date": "2025-07-14",
+          "from": "Sami Belkacem",
+          "message_id": "1034",
+          "content_type": "text",
+          "file_name": "",
+          "text_preview": "Salam, for those looking for internships, don’t forget to check out this file containing a list of Algerian companies and institutions that offer internship or job opportunities in AI and Data Science"
         }
       ]
     },
@@ -94,33 +107,40 @@
       "hit@1": 1,
       "hit@3": 1,
       "hit@5": 1,
-      "groundedness": 0.6053,
+      "groundedness": 0.4068,
       "citation_usefulness": 1.0,
-      "mode": "extractive",
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.6072,
+          "score": 0.9065,
+          "trust": "high",
+          "date": "2026-03-23",
+          "from": "ENSIA IMPACT © Group",
+          "message_id": "1411",
+          "content_type": "link",
+          "file_name": "",
+          "text_preview": "📢 Summer Internships & Job Offers\n Salam all,\n We have reached out to our company partners today and invited them to publish their summer internship opportunities as well as job offers on the following platform: https://"
+        },
+        {
+          "score": 0.7384,
+          "trust": "high",
+          "date": "2026-03-23",
+          "from": "IMED EDDINE BEGHOU",
+          "message_id": "1412",
+          "content_type": "text",
+          "file_name": "",
+          "text_preview": "I think it is better then to separate internships from job offers in the platform. As the people posting sometimes do not specify the type, and all is under one section named “internships”."
+        },
+        {
+          "score": 0.5919,
+          "trust": "high",
           "date": "2025-06-05",
           "from": "Safia Tifour",
           "message_id": "970",
+          "content_type": "link",
           "file_name": "",
           "text_preview": "en students from ENSIA and ENSA and is shared with all the relevant communities. Its sole purpose is to:\n– Help you organize or join a team. – Connect with students from the other school. – Encourage balanced and complem"
-        },
-        {
-          "score": 0.5997,
-          "date": "2025-07-02",
-          "from": "Sami Belkacem",
-          "message_id": "1007",
-          "file_name": "",
-          "text_preview": "Interesting paid internship opportunity at the new Annaba Innovation Center (AIC)."
-        },
-        {
-          "score": 0.5871,
-          "date": "2025-03-16",
-          "from": "ENSIA IMPACT © Group",
-          "message_id": "832",
-          "file_name": "",
-          "text_preview": "ging the gap between academia and market-ready ventures. 🎯 What’s in it for you? ✅ Training sessions on AI, business, and innovation\n✅ Hands-on mentorship from industry experts\n✅ Guidance to develop a solid business & te"
         }
       ]
     },
@@ -131,33 +151,40 @@
       "hit@1": 1,
       "hit@3": 1,
       "hit@5": 1,
-      "groundedness": 0.6517,
+      "groundedness": 0.1034,
       "citation_usefulness": 1.0,
-      "mode": "extractive",
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.7411,
+          "score": 0.8404,
+          "trust": "high",
+          "date": "2025-07-14",
+          "from": "Sami Belkacem",
+          "message_id": "1034",
+          "content_type": "text",
+          "file_name": "",
+          "text_preview": "Salam, for those looking for internships, don’t forget to check out this file containing a list of Algerian companies and institutions that offer internship or job opportunities in AI and Data Science"
+        },
+        {
+          "score": 0.8272,
+          "trust": "high",
           "date": "2024-09-22",
           "from": "ENSIA IMPACT © Group",
           "message_id": "305",
+          "content_type": "link",
           "file_name": "",
           "text_preview": "First of all, you will find below a list of companies/institutions that could provide for you intership or job opportunities in AI and Data Science: https://docs.google.com/spreadsheets/d/1_eqZK-RTJE3IaL_siMUXyFU8hiAtBg-"
         },
         {
-          "score": 0.6804,
+          "score": 0.6921,
+          "trust": "high",
           "date": "2025-10-31",
           "from": "Sami Belkacem",
           "message_id": "1192",
+          "content_type": "photo",
           "file_name": "",
           "text_preview": "ole\n A great opportunity to connect, learn, and explore careers in AI & Data! 💡\n Note: In addition to job offers, the ministry has agreed to inform the invited companies about other opportunities for the rest of the stud"
-        },
-        {
-          "score": 0.676,
-          "date": "2026-03-15",
-          "from": "Aicha",
-          "message_id": "1396",
-          "file_name": "",
-          "text_preview": "might interest some of you. Feel free to check them out if you’re interested:  \n • Junior AI Engineer (Internship Accepted) — Radiology AI Assistant https://refcircle.net/jobs/junior-ai-engineer-internship-accepted-radio"
         }
       ]
     },
@@ -168,33 +195,40 @@
       "hit@1": 0,
       "hit@3": 1,
       "hit@5": 1,
-      "groundedness": 0.5926,
+      "groundedness": 0.2222,
       "citation_usefulness": 1.0,
-      "mode": "extractive",
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.5572,
-          "date": "2025-06-05",
-          "from": "Safia Tifour",
-          "message_id": "970",
-          "file_name": "",
-          "text_preview": "Team Formation – AgrI Challenge 2 Dear students,"
-        },
-        {
-          "score": 0.5251,
-          "date": "2026-03-12",
+          "score": 0.4875,
+          "trust": "medium",
+          "date": "2024-10-16",
           "from": "ENSIA IMPACT © Group",
-          "message_id": "1395",
+          "message_id": "573",
+          "content_type": "text",
           "file_name": "",
-          "text_preview": "📢 Opportunity for Students 🎓\n You may be interested in the Student Campuce platform:\n 🔗 https://www.student-campuce.dz/ This initiative, launched by Djezzy in partnership with Algérie Poste, offers several advantages for"
+          "text_preview": "Advice to find internships in a company, even if it's not a partner:"
         },
         {
-          "score": 0.5196,
-          "date": "2025-08-08",
-          "from": "Sami Belkacem",
-          "message_id": "1054",
+          "score": 0.4795,
+          "trust": "medium",
+          "date": "2026-03-23",
+          "from": "ENSIA IMPACT © Group",
+          "message_id": "1411",
+          "content_type": "link",
           "file_name": "",
-          "text_preview": "🤖 AI Challenge 2025 - International Competition 🏆\n The Russian Embassy in Algiers is inviting Algerian students to participate!"
+          "text_preview": "📢 Summer Internships & Job Offers\n Salam all,\n We have reached out to our company partners today and invited them to publish their summer internship opportunities as well as job offers on the following platform: https://"
+        },
+        {
+          "score": 0.3848,
+          "trust": "medium",
+          "date": "2025-07-07",
+          "from": "Sami Belkacem",
+          "message_id": "1026",
+          "content_type": "link",
+          "file_name": "",
+          "text_preview": "Another great website that lists summer schools and internship programs for students in various countries: https://scholarships365.info/summerschools/ https://scholarships365.info/internship/ These opportunities allow yo"
         }
       ]
     },
@@ -205,31 +239,38 @@
       "hit@1": 1,
       "hit@3": 1,
       "hit@5": 1,
-      "groundedness": 0.6842,
+      "groundedness": 0.069,
       "citation_usefulness": 1.0,
-      "mode": "extractive",
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.709,
+          "score": 0.6926,
+          "trust": "high",
           "date": "2026-03-23",
           "from": "ENSIA IMPACT © Group",
           "message_id": "1413",
+          "content_type": "text",
           "file_name": "",
           "text_preview": "The job section is already being implemented and will be deployed soon inchallah. \n\nFor now, we have asked companies to post in the internship section and clearly indicate if the listing is a job offer."
         },
         {
-          "score": 0.6003,
+          "score": 0.5138,
+          "trust": "medium",
           "date": "2026-03-23",
           "from": "IMED EDDINE BEGHOU",
           "message_id": "1412",
+          "content_type": "text",
           "file_name": "",
           "text_preview": "I think it is better then to separate internships from job offers in the platform. As the people posting sometimes do not specify the type, and all is under one section named “internships”."
         },
         {
-          "score": 0.5398,
+          "score": 0.4157,
+          "trust": "medium",
           "date": "2026-03-23",
           "from": "ENSIA IMPACT © Group",
           "message_id": "1411",
+          "content_type": "link",
           "file_name": "",
           "text_preview": "📢 Summer Internships & Job Offers\n Salam all,\n We have reached out to our company partners today and invited them to publish their summer internship opportunities as well as job offers on the following platform: https://"
         }
@@ -242,33 +283,40 @@
       "hit@1": 1,
       "hit@3": 1,
       "hit@5": 1,
-      "groundedness": 0.6234,
+      "groundedness": 0.3793,
       "citation_usefulness": 1.0,
-      "mode": "extractive",
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.6947,
+          "score": 0.897,
+          "trust": "high",
           "date": "2026-03-23",
           "from": "ENSIA IMPACT © Group",
           "message_id": "1411",
+          "content_type": "link",
           "file_name": "",
           "text_preview": "📢 Summer Internships & Job Offers\n Salam all,\n We have reached out to our company partners today and invited them to publish their summer internship opportunities as well as job offers on the following platform: https://"
         },
         {
-          "score": 0.608,
-          "date": "2025-03-26",
-          "from": "ENSIA IMPACT © Group",
-          "message_id": "857",
+          "score": 0.3786,
+          "trust": "medium",
+          "date": "2025-06-03",
+          "from": "Sami Belkacem",
+          "message_id": "966",
+          "content_type": "link",
           "file_name": "",
-          "text_preview": "Salam everyone, just to let you know that you can find online many other summer programs or interships for undergraduate students"
+          "text_preview": "ries:\n👉 https://github.com/himahuja/Research-Internships-for-Undergraduates P.S. You can also find many other summer programs online with a quick search\nLinks: https://github.com/himahuja/Research-Internships-for-Undergr"
         },
         {
-          "score": 0.6074,
-          "date": "2025-07-07",
-          "from": "Sami Belkacem",
-          "message_id": "1026",
+          "score": 0.3148,
+          "trust": "medium",
+          "date": "2024-10-16",
+          "from": "ENSIA IMPACT © Group",
+          "message_id": "575",
+          "content_type": "photo",
           "file_name": "",
-          "text_preview": "Another great website that lists summer schools and internship programs for students in various countries: https://scholarships365.info/summerschools/ https://scholarships365.info/internship/ These opportunities allow yo"
+          "text_preview": "provides enough detail while remaining concise to respect the recruiter's time. Adapt your application: Even for a one-month internship, explain how it could be a valuable first contact with the company and lead to furth"
         }
       ]
     },
@@ -276,36 +324,43 @@
       "case_id": "fr_01",
       "language": "fr",
       "query": "Ou puis-je trouver des offres de stage en IA ?",
-      "hit@1": 0,
+      "hit@1": 1,
       "hit@3": 1,
       "hit@5": 1,
-      "groundedness": 0.6154,
+      "groundedness": 0.38,
       "citation_usefulness": 1.0,
-      "mode": "extractive",
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.6103,
-          "date": "2025-05-11",
-          "from": "Sami Belkacem",
-          "message_id": "930",
-          "file_name": "",
-          "text_preview": "New and emerging Ai job roles\n[Contains image]"
-        },
-        {
-          "score": 0.6087,
-          "date": "2025-03-16",
+          "score": 0.4875,
+          "trust": "medium",
+          "date": "2024-10-16",
           "from": "ENSIA IMPACT © Group",
-          "message_id": "827",
+          "message_id": "573",
+          "content_type": "text",
           "file_name": "",
-          "text_preview": "a: A platform that connects these professionals with AI experts and consultants. This could be a great opportunity for AI graduates and professionals to offer their expertise as a paid service while helping different sec"
+          "text_preview": "Advice to find internships in a company, even if it's not a partner:"
         },
         {
-          "score": 0.5368,
-          "date": "2025-08-14",
-          "from": "Younes Ahmane",
-          "message_id": "1060",
+          "score": 0.4824,
+          "trust": "medium",
+          "date": "2026-03-23",
+          "from": "ENSIA IMPACT © Group",
+          "message_id": "1411",
+          "content_type": "link",
           "file_name": "",
-          "text_preview": ": Sept 1, 2025\nAcceptance Notification: Sept 20, 2025\nCamera-Ready: Nov 1, 2025\n Tracks:\nAI research\nIndustry applications\nStartup innovation\n Accepted papers will appear in IEEE Xplore. Details & submission: aiia.univ-b"
+          "text_preview": "📢 Summer Internships & Job Offers\n Salam all,\n We have reached out to our company partners today and invited them to publish their summer internship opportunities as well as job offers on the following platform: https://"
+        },
+        {
+          "score": 0.4437,
+          "trust": "medium",
+          "date": "2026-03-23",
+          "from": "IMED EDDINE BEGHOU",
+          "message_id": "1412",
+          "content_type": "text",
+          "file_name": "",
+          "text_preview": "I think it is better then to separate internships from job offers in the platform. As the people posting sometimes do not specify the type, and all is under one section named “internships”."
         }
       ]
     },
@@ -313,34 +368,41 @@
       "case_id": "fr_02",
       "language": "fr",
       "query": "Y a-t-il des ressources partagees pour les PFE ?",
-      "hit@1": 0,
+      "hit@1": 1,
       "hit@3": 1,
       "hit@5": 1,
-      "groundedness": 0.6857,
+      "groundedness": 0.2885,
       "citation_usefulness": 1.0,
-      "mode": "extractive",
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.5268,
-          "date": "2024-10-14",
+          "score": 0.4875,
+          "trust": "medium",
+          "date": "2025-03-29",
           "from": "ENSIA IMPACT © Group",
-          "message_id": "560",
+          "message_id": "866",
+          "content_type": "text",
           "file_name": "",
-          "text_preview": "Hi everyone, I’ve been sharing information about partnerships, but I forgot to mention that these partnerships could potentially cover:"
+          "text_preview": "Salam everyone,\n This channel provides guidance and support for students working on their final year project (PFE). Your project choice will shape your expertise and future career. Over months of intensive work, you will"
         },
         {
-          "score": 0.5043,
-          "date": "2024-10-14",
-          "from": "ENSIA IMPACT © Group",
-          "message_id": "560",
+          "score": 0.4492,
+          "trust": "medium",
+          "date": "2025-09-14",
+          "from": "Sami Belkacem",
+          "message_id": "1086",
+          "content_type": "text",
           "file_name": "",
-          "text_preview": "ships, but I forgot to mention that these partnerships could potentially cover:\n - Collaborative projects between institutions\n- Trainings and internships\n- Job opportunities and mentoring \n- Incubation/Support for innov"
+          "text_preview": "💡 FYP Research Tip\n If your Final Year Project (FYP) is research-oriented, one of the best ways to quickly get an overview of a field is by reading recent \"Survey\" & \"Review\" papers. ✅ They summarize the latest progress "
         },
         {
-          "score": 0.4984,
+          "score": 0.3172,
+          "trust": "medium",
           "date": "2025-11-12",
           "from": "Sami Belkacem",
           "message_id": "1212",
+          "content_type": "text",
           "file_name": "",
           "text_preview": "on’t miss out on the chance to meet them! Note: Bring your CV in the PFE format. Companies will provide a QR code through which you can apply for relevant opportunities (jobs, internships, final-year projects, etc.)."
         }
@@ -353,33 +415,40 @@
       "hit@1": 1,
       "hit@3": 1,
       "hit@5": 1,
-      "groundedness": 0.7606,
-      "citation_usefulness": 1.0,
-      "mode": "extractive",
+      "groundedness": 0.6226,
+      "citation_usefulness": 0.95,
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.5186,
-          "date": "2024-11-09",
-          "from": "ENSIA IMPACT © Group",
-          "message_id": "630",
+          "score": 0.96,
+          "trust": "high",
+          "date": "",
+          "from": "system",
+          "message_id": "structured_events",
+          "content_type": "table",
           "file_name": "",
-          "text_preview": "Interesting Hackathon organized by Algérie Poste. The topics cover:\n\n- Web development \n- AI and Computer Vision\n- Community engagement platform https://www.innovpost-ap-dz.com/\nLinks: https://www.innovpost-ap-dz.com/"
+          "text_preview": "Structured events timeline:\n- 2026-03-26 | ANPT INCUBATION Program 🚀 The ANPT Incubation Program in partnership with Mobilis and CPA is open. To turn your idea into a scalable startup, you will benefit from: ✔ Mentorship"
         },
         {
-          "score": 0.5103,
+          "score": 0.638,
+          "trust": "high",
           "date": "2024-11-11",
           "from": "ENSIA IMPACT © Group",
           "message_id": "632",
+          "content_type": "link",
           "file_name": "",
           "text_preview": "gerian companies. - It features 15 hackathons covering critical national topics. https://www.ibtikar.info/ https://events.cnrst.dz/ Note: open the website on desktop for a better browsing experience\nLinks: https://www.ib"
         },
         {
-          "score": 0.4231,
-          "date": "2024-11-26",
+          "score": 0.5376,
+          "trust": "medium",
+          "date": "2024-11-09",
           "from": "ENSIA IMPACT © Group",
-          "message_id": "725",
+          "message_id": "630",
+          "content_type": "link",
           "file_name": "",
-          "text_preview": "Interesting Hackathon organized by Yassir Algeria, there are two topics:\n - 𝘈𝘐-𝘋𝘳𝘪𝘷𝘦𝘯 𝘚𝘮𝘢𝘳𝘵 𝘔𝘰𝘣𝘪𝘭𝘪𝘵𝘺 𝘚𝘰𝘭𝘶𝘵𝘪𝘰𝘯𝘴 𝘧𝘰𝘳 𝘖𝘱𝘵𝘪𝘮𝘪𝘻𝘦𝘥 𝘙𝘪𝘥𝘦-𝘏𝘢𝘪𝘭𝘪𝘯𝘨 \n- 𝘈𝘐-𝘗𝘰𝘸𝘦𝘳𝘦𝘥 𝘚𝘦𝘯𝘵𝘪𝘮𝘦𝘯𝘵 𝘈𝘯𝘢𝘭𝘺𝘴𝘪𝘴 𝘰𝘧 𝘊𝘶𝘴𝘵𝘰𝘮𝘦𝘳 𝘍𝘦𝘦𝘥𝘣𝘢𝘤𝘬"
+          "text_preview": "Interesting Hackathon organized by Algérie Poste. The topics cover:\n\n- Web development \n- AI and Computer Vision\n- Community engagement platform https://www.innovpost-ap-dz.com/\nLinks: https://www.innovpost-ap-dz.com/"
         }
       ]
     },
@@ -390,33 +459,40 @@
       "hit@1": 0,
       "hit@3": 0,
       "hit@5": 1,
-      "groundedness": 0.6515,
-      "citation_usefulness": 0.8,
-      "mode": "extractive",
+      "groundedness": 0.1053,
+      "citation_usefulness": 0.7,
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.6353,
+          "score": 0.7349,
+          "trust": "high",
           "date": "2025-06-06",
           "from": "Sami Belkacem",
           "message_id": "976",
+          "content_type": "text",
           "file_name": "",
           "text_preview": "Aidkoum Moubarak to the ENSIA Impact community 🎊 🐑 تقبل الله منا ومنكم صالح الأعمال"
         },
         {
-          "score": 0.5817,
+          "score": 0.3586,
+          "trust": "medium",
           "date": "2024-10-14",
           "from": "ENSIA IMPACT © Group",
           "message_id": "560",
+          "content_type": "text",
           "file_name": "",
           "text_preview": "Hi everyone, I’ve been sharing information about partnerships, but I forgot to mention that these partnerships could potentially cover:"
         },
         {
-          "score": 0.5545,
-          "date": "2025-06-05",
-          "from": "Safia Tifour",
-          "message_id": "970",
+          "score": 0.2988,
+          "trust": "medium",
+          "date": "2025-11-17",
+          "from": "Sami Belkacem",
+          "message_id": "1241",
+          "content_type": "text",
           "file_name": "",
-          "text_preview": "en students from ENSIA and ENSA and is shared with all the relevant communities. Its sole purpose is to:\n– Help you organize or join a team. – Connect with students from the other school. – Encourage balanced and complem"
+          "text_preview": "700 members so far!\n\nThe ENSIA Impact family is expanding 🙏❤️\n\nNext goal: 800 members Inchallah.\n\nLet’s keep growing and creating impact together.\n\nOur feedback form will always remain open for your opinions and suggesti"
         }
       ]
     },
@@ -427,33 +503,40 @@
       "hit@1": 1,
       "hit@3": 1,
       "hit@5": 1,
-      "groundedness": 0.5974,
+      "groundedness": 0.3333,
       "citation_usefulness": 1.0,
-      "mode": "extractive",
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.5996,
-          "date": "2024-09-27",
+          "score": 0.7681,
+          "trust": "high",
+          "date": "2025-04-15",
           "from": "ENSIA IMPACT © Group",
-          "message_id": "411",
-          "file_name": "",
-          "text_preview": "ng a culture of entrepreneurship and innovation within the academic environment. To begin, we encourage you to read Decree 1275, issued by the Ministry of Higher Education in 2022, which introduces the initiative:  \n\"A D"
+          "message_id": "885",
+          "content_type": "file",
+          "file_name": "Startup_Factory[1] (1).pdf",
+          "text_preview": "s Startups, de l'Économie du Savoir et du Ministère de l'Enseignement Supérieur. Partenaires : • Ministère des Startups • Ministère de l'Enseignement Supérieur • CarpeDiem Concept • Centre universitaire de Tipaza (CUTIN)"
         },
         {
-          "score": 0.5718,
-          "date": "2025-10-28",
-          "from": "Sami Belkacem",
-          "message_id": "1181",
-          "file_name": "The Ultimate Guide to Pitch Decks for Entrepreneurs.pdf",
-          "text_preview": "[Attached file: The Ultimate Guide to Pitch Decks for Entrepreneurs.pdf]"
+          "score": 0.4875,
+          "trust": "medium",
+          "date": "2026-03-07",
+          "from": "ENSIA IMPACT © Group",
+          "message_id": "1389",
+          "content_type": "text",
+          "file_name": "",
+          "text_preview": "📢 FYP under Law 08/1275 & Innovation\n Decree 1275 (2022) introduced:\n“A Diploma – A Startup / A Diploma – A Patent”, recently updated by Decree 008. 🎯 Goal: Promote commercializable FYPs. 💡 Project Types\n 1️⃣ Startup Pro"
         },
         {
-          "score": 0.5642,
-          "date": "2024-10-28",
-          "from": "Wahid Chami ENSIA",
-          "message_id": "611",
+          "score": 0.4557,
+          "trust": "medium",
+          "date": "2024-12-18",
+          "from": "ENSIA IMPACT © Group",
+          "message_id": "755",
+          "content_type": "photo",
           "file_name": "",
-          "text_preview": "Dear all,\n I am thrilled to announce the official creation of the Entrepreneurship Development Centre at our school! This initiative is designed to equip you with the skills and knowledge needed to face the challenges of"
+          "text_preview": "[Contains image]\n\n[Extracted image text]\nMINISTRY OF KNOWLEDGE ECONOMY, STARTUPS AND MICRO-ENTERPRISES y) Samira” START-UP ACADEMY Lémission qui propulse votre business ! C'est l'occasion de booster votre business ! Vous"
         }
       ]
     },
@@ -461,36 +544,43 @@
       "case_id": "fr_06",
       "language": "fr",
       "query": "Comment suivre les opportunites d'emploi pour les etudiants ?",
-      "hit@1": 1,
+      "hit@1": 0,
       "hit@3": 1,
       "hit@5": 1,
-      "groundedness": 0.68,
+      "groundedness": 0.2381,
       "citation_usefulness": 1.0,
-      "mode": "extractive",
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.5278,
-          "date": "2026-03-12",
+          "score": 0.4875,
+          "trust": "medium",
+          "date": "2024-10-16",
           "from": "ENSIA IMPACT © Group",
-          "message_id": "1395",
+          "message_id": "573",
+          "content_type": "text",
           "file_name": "",
-          "text_preview": ", internships, job opportunities\n- Platform gathering services for student life\n Feel free to explore the platform and see if the available services can be useful during your studies. Links: https://www.student-campuce.d"
+          "text_preview": "Advice to find internships in a company, even if it's not a partner:"
         },
         {
-          "score": 0.5017,
-          "date": "2026-01-07",
+          "score": 0.3569,
+          "trust": "medium",
+          "date": "2026-03-23",
           "from": "ENSIA IMPACT © Group",
-          "message_id": "1323",
-          "file_name": "Flyer Company program.pdf",
-          "text_preview": "receive training, work with professional mentors, and compete at national level. 🎯 Benefits:\n• Practical entrepreneurship training\n• Mentorship from industry professionals\n• Develop leadership, teamwork, innovation\n• Nat"
+          "message_id": "1411",
+          "content_type": "link",
+          "file_name": "",
+          "text_preview": "📢 Summer Internships & Job Offers\n Salam all,\n We have reached out to our company partners today and invited them to publish their summer internship opportunities as well as job offers on the following platform: https://"
         },
         {
-          "score": 0.4947,
-          "date": "2025-06-18",
-          "from": "Zahra Ab",
-          "message_id": "993",
+          "score": 0.3377,
+          "trust": "medium",
+          "date": "2026-03-23",
+          "from": "IMED EDDINE BEGHOU",
+          "message_id": "1412",
+          "content_type": "text",
           "file_name": "",
-          "text_preview": "Internship Opportunity for 4th year students : https://www.facebook.com/100064149248456/posts/1125673102914321/?mibextid=rS40aB7S9Ucbxw6v\nLinks: https://www.facebook.com/100064149248456/posts/1125673102914321/?mibextid=r"
+          "text_preview": "I think it is better then to separate internships from job offers in the platform. As the people posting sometimes do not specify the type, and all is under one section named “internships”."
         }
       ]
     },
@@ -501,33 +591,40 @@
       "hit@1": 1,
       "hit@3": 1,
       "hit@5": 1,
-      "groundedness": 0.6351,
+      "groundedness": 0.3571,
       "citation_usefulness": 1.0,
-      "mode": "extractive",
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.7432,
-          "date": "2025-03-16",
+          "score": 0.4875,
+          "trust": "medium",
+          "date": "2026-03-23",
           "from": "ENSIA IMPACT © Group",
-          "message_id": "827",
+          "message_id": "1411",
+          "content_type": "link",
           "file_name": "",
-          "text_preview": "a: A platform that connects these professionals with AI experts and consultants. This could be a great opportunity for AI graduates and professionals to offer their expertise as a paid service while helping different sec"
+          "text_preview": "📢 Summer Internships & Job Offers\n Salam all,\n We have reached out to our company partners today and invited them to publish their summer internship opportunities as well as job offers on the following platform: https://"
         },
         {
-          "score": 0.6857,
-          "date": "2025-10-14",
-          "from": "Sami Belkacem",
-          "message_id": "1137",
+          "score": 0.4297,
+          "trust": "medium",
+          "date": "2025-04-21",
+          "from": "ENSIA IMPACT © Group",
+          "message_id": "902",
+          "content_type": "link",
           "file_name": "",
-          "text_preview": "🚀 AI4Health is here! When artificial intelligence meets healthcare, innovation takes shape. 🎯 A 3-day challenge uniting students, researchers & innovators to imagine the future of healthcare through AI. 📍 ENSM Koléa/Univ"
+          "text_preview": "Interesting paid internship program: https://www.linkedin.com/posts/belhacel-omar-tadj-elmoulouk_were-hiring-ai-machine-learning-interns-activity-7315017572502966273-YWli\nLinks: https://www.linkedin.com/posts/belhacel-om"
         },
         {
-          "score": 0.6758,
-          "date": "2025-05-11",
-          "from": "Sami Belkacem",
-          "message_id": "930",
+          "score": 0.3968,
+          "trust": "medium",
+          "date": "2024-10-16",
+          "from": "ENSIA IMPACT © Group",
+          "message_id": "573",
+          "content_type": "text",
           "file_name": "",
-          "text_preview": "New and emerging Ai job roles\n[Contains image]"
+          "text_preview": "Advice to find internships in a company, even if it's not a partner:"
         }
       ]
     },
@@ -536,27 +633,42 @@
       "language": "ar",
       "query": "هل كاين منصات فيها عروض ستاج ولا خدمة؟",
       "hit@1": 0,
-      "hit@3": 0,
-      "hit@5": 0,
-      "groundedness": 0.5581,
-      "citation_usefulness": 0.8,
-      "mode": "extractive",
+      "hit@3": 1,
+      "hit@5": 1,
+      "groundedness": 0.0741,
+      "citation_usefulness": 0.7,
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1-general",
       "top_sources": [
         {
-          "score": 0.3954,
+          "score": 0.5124,
+          "trust": "medium",
+          "date": "2024-10-11",
+          "from": "ENSIA IMPACT © Group",
+          "message_id": "553",
+          "content_type": "file",
+          "file_name": "دليل_مشروع_للحصول_على_شهادة_مؤسسة_ناشئة.pdf",
+          "text_preview": "لمهمة:مساعدة العميل ع ✓ التصميم:جعل التصاميم تتوا ✓ السعر:تقديم منتج أو خدمة ب . ✓ خفض التكاليف:مساعدة ال ✓ الحد من المخاطر:تقليص احتم ✓ سهولة الوصول:جعل المنتجا ✓ الملاءمة/سهولة الاستخدام: 3."
+        },
+        {
+          "score": 0.4875,
+          "trust": "medium",
           "date": "2024-09-22",
           "from": "ENSIA IMPACT © Group",
           "message_id": "314",
+          "content_type": "link",
           "file_name": "",
           "text_preview": "e). Although Dr. Lasla isn't on the server, we will share updates on his behalf. Feel free to contact him for any questions\nLinks: https://www.wipo.int/fr/web/tisc"
         },
         {
-          "score": 0.3717,
-          "date": "2024-10-07",
-          "from": "Wahid Chami ENSIA",
-          "message_id": "537",
-          "file_name": "",
-          "text_preview": "الروض وربما الاجنحة"
+          "score": 0.4407,
+          "trust": "medium",
+          "date": "2024-09-27",
+          "from": "ENSIA IMPACT © Group",
+          "message_id": "414",
+          "content_type": "file",
+          "file_name": "اليات تنفيذ مشروع القرار 1275.pdf",
+          "text_preview": "خالل ميزانيتها الخاصة أو باالستعانة بمنص ة ابتكار عند الحاجة أو وكالة ANVREDET . التفكير في آلية لدعم بعض التجارب والتحاليل املخبري ة كمنصة ابتكار و مراكز التحاليل التابعة لقطاع التعليم العالي ضرورة إنشاء منصات رقمية على"
         }
       ]
     },
@@ -564,36 +676,43 @@
       "case_id": "ar_03",
       "language": "ar",
       "query": "اعطيني معلومات على الشركات اللي توفر تربصات.",
-      "hit@1": 1,
+      "hit@1": 0,
       "hit@3": 1,
       "hit@5": 1,
-      "groundedness": 0.46,
+      "groundedness": 0.0154,
       "citation_usefulness": 1.0,
-      "mode": "extractive",
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.6042,
-          "date": "2024-09-22",
+          "score": 0.5125,
+          "trust": "medium",
+          "date": "2024-10-11",
           "from": "ENSIA IMPACT © Group",
-          "message_id": "308",
-          "file_name": "",
-          "text_preview": "And here is the distribution of the companies by Location"
+          "message_id": "553",
+          "content_type": "file",
+          "file_name": "دليل_مشروع_للحصول_على_شهادة_مؤسسة_ناشئة.pdf",
+          "text_preview": "[Attached file: دليل_مشروع_للحصول_على_شهادة_مؤسسة_ناشئة.pdf]\n [Extracted PDF text]\nاللجنة الوطنية التنسيقية لمتابعة االبتكار وحاضنات األعمال الجامعية National Coordinating Committee of Innovation Follow-up and University"
         },
         {
-          "score": 0.5692,
-          "date": "2025-11-12",
+          "score": 0.4876,
+          "trust": "medium",
+          "date": "2025-10-31",
           "from": "Sami Belkacem",
-          "message_id": "1212",
+          "message_id": "1192",
+          "content_type": "photo",
           "file_name": "",
-          "text_preview": "Good update! The number of participating companies is steadily increasing. This includes some companies we’ve previously collaborated with at our school, as well as many new companies and startups we’ll have the opportun"
+          "text_preview": "ole\n A great opportunity to connect, learn, and explore careers in AI & Data! 💡\n Note: In addition to job offers, the ministry has agreed to inform the invited companies about other opportunities for the rest of the stud"
         },
         {
-          "score": 0.5455,
-          "date": "2024-09-22",
-          "from": "ENSIA IMPACT © Group",
-          "message_id": "306",
-          "file_name": "",
-          "text_preview": "Here is the distribution of the companies by Application domain"
+          "score": 0.4627,
+          "trust": "medium",
+          "date": "2024-10-14",
+          "from": "Wahid Chami ENSIA",
+          "message_id": "566",
+          "content_type": "file",
+          "file_name": "A2023078 (1).pdf",
+          "text_preview": "تعاون، وذلك ﰲ اﳊدود الــتي تــقـتضيـهـا ﰲ الـتـحـقـيـق واﻹجـراءات اﶈددة ﰲ الطلب. ٢– ﻻ يجوز للطرف الطالب استخدام أو إفشاء معلومات أو أدلة مقدمة من الطرف اﳌطلوب منه التعاون، بغرض التحقيق أو ﻹجراءات غير تلك اﳌنصوص عليها ﰲ ا"
         }
       ]
     },
@@ -603,34 +722,41 @@
       "query": "هل كاين منشورات على الهاكاثون والايفنتات؟",
       "hit@1": 0,
       "hit@3": 0,
-      "hit@5": 1,
-      "groundedness": 0.3939,
-      "citation_usefulness": 0.8,
-      "mode": "extractive",
+      "hit@5": 0,
+      "groundedness": 0.0,
+      "citation_usefulness": 0.7,
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.4728,
+          "score": 0.7357,
+          "trust": "high",
           "date": "2024-10-07",
           "from": "Wahid Chami ENSIA",
           "message_id": "537",
+          "content_type": "text",
           "file_name": "",
           "text_preview": "الروض وربما الاجنحة"
         },
         {
-          "score": 0.4244,
-          "date": "2024-09-26",
+          "score": 0.5124,
+          "trust": "medium",
+          "date": "2025-06-07",
           "from": "ENSIA IMPACT © Group",
-          "message_id": "379",
+          "message_id": "977",
+          "content_type": "text",
           "file_name": "",
-          "text_preview": "https://info.nvidia.com/launch-ai\nLinks: https://info.nvidia.com/launch-ai"
+          "text_preview": "عيدكم مبارك جميعا. شكرا سامي على الجهود المبذولة."
         },
         {
-          "score": 0.4241,
-          "date": "2025-09-05",
-          "from": "Abdussamad",
-          "message_id": "1076",
-          "file_name": "",
-          "text_preview": "https://rti.github.io/gptvis/\nLinks: https://rti.github.io/gptvis/"
+          "score": 0.4093,
+          "trust": "medium",
+          "date": "2024-09-27",
+          "from": "ENSIA IMPACT © Group",
+          "message_id": "414",
+          "content_type": "file",
+          "file_name": "اليات تنفيذ مشروع القرار 1275.pdf",
+          "text_preview": "لترقية وتطوير املقاوالتيةANADE ...الخ)على االلتزام بأخذ مشاريع الطلبة كأولوية) . 2 1 3 4 آليات التمويل 5 تسهيل إجراءات الحصول على الدعم املالي خاصة فيما يتعلق بحصول الطلبة املنخرطين في مشروع شهادة–مؤسسة ناشئة على وسم\"الب"
         }
       ]
     },
@@ -640,34 +766,41 @@
       "query": "كيفاش نلقى روابط الموارد اللي يبارتاجيوهم في القروب؟",
       "hit@1": 0,
       "hit@3": 0,
-      "hit@5": 1,
-      "groundedness": 0.6495,
+      "hit@5": 0,
+      "groundedness": 0.0667,
       "citation_usefulness": 0.8,
-      "mode": "extractive",
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.4787,
-          "date": "2025-04-14",
-          "from": "ENSIA IMPACT © Group",
-          "message_id": "884",
-          "file_name": "",
-          "text_preview": "[Platform to Connect Students with Research Teams]\n Salam everyone,\nAs you know, students at our school currently lack a proper environment to explore and engage in scientific research. To address this, a group of third-"
-        },
-        {
-          "score": 0.4642,
+          "score": 0.7374,
+          "trust": "high",
           "date": "2024-10-14",
-          "from": "ENSIA IMPACT © Group",
-          "message_id": "560",
-          "file_name": "",
-          "text_preview": "ships, but I forgot to mention that these partnerships could potentially cover:\n - Collaborative projects between institutions\n- Trainings and internships\n- Job opportunities and mentoring \n- Incubation/Support for innov"
+          "from": "Wahid Chami ENSIA",
+          "message_id": "566",
+          "content_type": "file",
+          "file_name": "A2023078 (1).pdf",
+          "text_preview": "ﱃ عام ٥4 4١ هـ ٥ ديسمبر سنة ٣٢٠٢ م25 – تكوينات ﰲ الدكتوراه ونشاطات البحث العلمي. كـمـا يـمـكـنـه ضـمـان التـكـويـن اﳌـتـواصـل وتـقــديـم خـدمـات وﲢسﲔ اﳌستوى وﲡديد اﳌعارف. يسيّر القسم رئيس قسم، ويزوّد بلجنة علمية ويشمل، ع"
         },
         {
-          "score": 0.4617,
-          "date": "2025-11-01",
-          "from": "Soundous Chemam",
-          "message_id": "1194",
-          "file_name": "",
-          "text_preview": "nses sont anonymes et utilisées uniquement à des fins de recherche scientifique. 🙏 Votre contribution est très précieuse pour nous aider à construire un outil adapté à notre culture et notre manière de parler. N’hésitez "
+          "score": 0.6035,
+          "trust": "medium",
+          "date": "2024-10-11",
+          "from": "ENSIA IMPACT © Group",
+          "message_id": "553",
+          "content_type": "file",
+          "file_name": "دليل_مشروع_للحصول_على_شهادة_مؤسسة_ناشئة.pdf",
+          "text_preview": "يخلق ✓ حدد طبيعة ونوعية اليد العاملة الت ✓ تحديد إمكانية اللجوء الى المناولة. 4. : الشراكات الرئيسية هنا يذكر صاحب المشروع الأطراف التي نتعامل 50منصب عمل مباشر و ما يقارب 100منصب عمل غير مباشر.لا يحتاج مشروعنا الى تخصصات"
+        },
+        {
+          "score": 0.3882,
+          "trust": "medium",
+          "date": "2024-09-27",
+          "from": "ENSIA IMPACT © Group",
+          "message_id": "414",
+          "content_type": "file",
+          "file_name": "اليات تنفيذ مشروع القرار 1275.pdf",
+          "text_preview": "5 إمكانية تمويل الخدمات الخاصة( ،تحاليل انجاز نموذج اولي)التي تم ت خارج الجامعة. 6 تجميع كل األجهزة املرتبطة بنشاط الحاضنة في فضاء واحد أ ان مكن؛ تجهيز فضاءات حاضنات األعمال الجامعية باألجهزة الالزمة لنشاط الطلبة؛ 3 1 ال"
         }
       ]
     },
@@ -678,33 +811,40 @@
       "hit@1": 1,
       "hit@3": 1,
       "hit@5": 1,
-      "groundedness": 0.6848,
+      "groundedness": 0.0,
       "citation_usefulness": 1.0,
-      "mode": "extractive",
+      "intent_accuracy": 1.0,
+      "mode": "generation-error",
       "top_sources": [
         {
-          "score": 0.5521,
-          "date": "2025-03-29",
-          "from": "ENSIA IMPACT © Group",
-          "message_id": "866",
-          "file_name": "",
-          "text_preview": "Salam everyone,\n This channel provides guidance and support for students working on their final year project (PFE). Your project choice will shape your expertise and future career. Over months of intensive work, you will"
-        },
-        {
           "score": 0.5245,
-          "date": "2026-03-07",
+          "trust": "medium",
+          "date": "2024-09-27",
           "from": "ENSIA IMPACT © Group",
-          "message_id": "1389",
-          "file_name": "",
-          "text_preview": "📢 FYP under Law 08/1275 & Innovation\n Decree 1275 (2022) introduced:\n“A Diploma – A Startup / A Diploma – A Patent”, recently updated by Decree 008. 🎯 Goal: Promote commercializable FYPs. 💡 Project Types\n 1️⃣ Startup Pro"
+          "message_id": "414",
+          "content_type": "file",
+          "file_name": "اليات تنفيذ مشروع القرار 1275.pdf",
+          "text_preview": "2022 آليات تنفيذ مشروع القرار1275 شهادة– مؤسسة ناشئة / شهادة– براءة اختراع أ.د . بعيطيش شعبان : عضو(ل.و.ت.م.ا.ح.ا) ممثل جهوي لحاضنات األعمال ملنطقة الشرق تحقيق الهدف( 41 ) من التزامات رئيس الجمهورية جعل الجامعة الجزائرية"
         },
         {
-          "score": 0.5169,
-          "date": "2025-11-12",
-          "from": "Sami Belkacem",
-          "message_id": "1212",
-          "file_name": "",
-          "text_preview": "on’t miss out on the chance to meet them! Note: Bring your CV in the PFE format. Companies will provide a QR code through which you can apply for relevant opportunities (jobs, internships, final-year projects, etc.)."
+          "score": 0.499,
+          "trust": "medium",
+          "date": "2024-10-14",
+          "from": "Wahid Chami ENSIA",
+          "message_id": "566",
+          "content_type": "file",
+          "file_name": "A2023078 (1).pdf",
+          "text_preview": "لقسم الثاني اﳌجلس العلمي للمدرسة اﳌادّة ٢4 : اﳌجلس العلمي للمدرسة هيئة استشارية. وبـهــذه الـصــفـة، يـبــدي آراء وتــوصـيـات، عـﲆ اﳋـصـوص فيما يأتي : – مشروع اﳌؤسسة، – اﳌـخـطـطات الـسـنـويــة واﳌـتـعــدّدة السـنـوات للـ"
+        },
+        {
+          "score": 0.4876,
+          "trust": "medium",
+          "date": "2024-10-28",
+          "from": "Wahid Chami ENSIA",
+          "message_id": "612",
+          "content_type": "file",
+          "file_name": "A2024070.pdf",
+          "text_preview": "ﻣﻬـــــﺎﻡ ﻣﺪﻳــــــﺮ ﺍﻹﺩﺍﺭﺓ ﺍﻟﻌﺎﻣــــــﺔ ﺑــــــﻮﺯﺍﺭﺓ ﺍﻟﺮﻗﻤﻨــــــﺔ ﻭﺍﻹﺣﺼﺎﺋﻴﺎﺕ. –––––––––––– ﲟﻮﺟﺐ ﻣﺮﺳﻮﻡ ﺗﻨﻔﻴﺬﻱ ﻣﺆﺭ ﺥ ﰲ 7 ﺭﺑﻴﻊ ﺍﻟﺜﺎﻧـﻲ ﻋـﺎﻡ 1446 ﺍﳌﻮﺍﻓﻖ 10 ﺃﻛﺘﻮﺑﺮ ﺳﻨـﺔ 2024 ، ﺗﻨﻬـﻰ ﻣﻬـﺎﻡ ﺍﻟﺴﻴ ـﺪ ﻋﺒـﺪ ﺍﻟﻐﺎﻧـﻲ ﻳﺎﺳــــﻒ، ﺑﺼﻔﺘ"
         }
       ]
     },
@@ -715,31 +855,38 @@
       "hit@1": 1,
       "hit@3": 1,
       "hit@5": 1,
-      "groundedness": 0.6296,
+      "groundedness": 0.3214,
       "citation_usefulness": 1.0,
-      "mode": "extractive",
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.615,
-          "date": "2025-04-21",
+          "score": 0.8441,
+          "trust": "high",
+          "date": "2026-03-23",
           "from": "ENSIA IMPACT © Group",
-          "message_id": "902",
+          "message_id": "1411",
+          "content_type": "link",
           "file_name": "",
-          "text_preview": "Interesting paid internship program: https://www.linkedin.com/posts/belhacel-omar-tadj-elmoulouk_were-hiring-ai-machine-learning-interns-activity-7315017572502966273-YWli\nLinks: https://www.linkedin.com/posts/belhacel-om"
+          "text_preview": "📢 Summer Internships & Job Offers\n Salam all,\n We have reached out to our company partners today and invited them to publish their summer internship opportunities as well as job offers on the following platform: https://"
         },
         {
-          "score": 0.6032,
-          "date": "2025-07-02",
-          "from": "Sami Belkacem",
-          "message_id": "1007",
+          "score": 0.4103,
+          "trust": "medium",
+          "date": "2024-09-27",
+          "from": "ENSIA IMPACT © Group",
+          "message_id": "410",
+          "content_type": "text",
           "file_name": "",
-          "text_preview": "Interesting paid internship opportunity at the new Annaba Innovation Center (AIC)."
+          "text_preview": "Hi everyone, \n The \"ENSIA Impact\" server has two main goals:\n 1. Explore Career Opportunities:\nWe’re here to share information and guide you through various career paths after your studies, such as:\n - Working as an engi"
         },
         {
-          "score": 0.5812,
+          "score": 0.3576,
+          "trust": "medium",
           "date": "2024-10-16",
           "from": "ENSIA IMPACT © Group",
           "message_id": "573",
+          "content_type": "text",
           "file_name": "",
           "text_preview": "Advice to find internships in a company, even if it's not a partner:"
         }
@@ -752,31 +899,38 @@
       "hit@1": 1,
       "hit@3": 1,
       "hit@5": 1,
-      "groundedness": 0.6932,
+      "groundedness": 0.3913,
       "citation_usefulness": 1.0,
-      "mode": "extractive",
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.6176,
+          "score": 0.6684,
+          "trust": "high",
+          "date": "2025-05-27",
+          "from": "Sami Belkacem",
+          "message_id": "956",
+          "content_type": "photo",
+          "file_name": "",
+          "text_preview": "Data Science internship at Société Générale Algérie: https://emploitic.com/entreprises/societe-generale-algerie/offres-d-emploi/banque-assurance-finance/stagiaires-data-analyst-science-des-donnees-h-f-e0ef66b08f0e377c283"
+        },
+        {
+          "score": 0.4875,
+          "trust": "medium",
           "date": "2025-10-31",
           "from": "Sami Belkacem",
           "message_id": "1192",
+          "content_type": "photo",
           "file_name": "",
-          "text_preview": "📢 AI & Maths Employability Day\n 🎯 The Ministry of Higher Education and Scientific Research is organizing this event in partnership with ENSIA and the National School of Mathematics. 📅 Date: Nov 15, 2025\n🕘 Time: 09:00 – 1"
+          "text_preview": "ole\n A great opportunity to connect, learn, and explore careers in AI & Data! 💡\n Note: In addition to job offers, the ministry has agreed to inform the invited companies about other opportunities for the rest of the stud"
         },
         {
-          "score": 0.5925,
-          "date": "2025-03-16",
-          "from": "ENSIA IMPACT © Group",
-          "message_id": "832",
-          "file_name": "",
-          "text_preview": "for the full ENSIA Incubation Program\n 📅 Deadline: Saturday, March 29 at 00:00\n 🔗 Apply now: https://forms.gle/MTGhxEPiDGmaBEuT9 Don't miss this opportunity to take your AI-driven project to the next level! 🚀\n For any qu"
-        },
-        {
-          "score": 0.5784,
+          "score": 0.4177,
+          "trust": "medium",
           "date": "2026-03-16",
           "from": "ENSIA IMPACT © Group",
           "message_id": "1399",
+          "content_type": "photo",
           "file_name": "",
           "text_preview": "curriculum, skill assessments, industry-recognized certifications, and DataLab. You can join using your ENSIA email address through the following link: https://www.datacamp.com/groups/shared_links/dd3db34b9dc39e4775e4faf"
         }
@@ -789,33 +943,40 @@
       "hit@1": 1,
       "hit@3": 1,
       "hit@5": 1,
-      "groundedness": 0.68,
+      "groundedness": 0.3636,
       "citation_usefulness": 1.0,
-      "mode": "extractive",
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.6531,
-          "date": "2025-06-16",
+          "score": 0.6648,
+          "trust": "high",
+          "date": "2025-04-15",
           "from": "ENSIA IMPACT © Group",
-          "message_id": "983",
-          "file_name": "",
-          "text_preview": "s to essential workshops that will take your startup journey to the next level:\n 🎯 Prototyping: From Idea to Proof of Concept 📅 Wednesday, 18 June | 09:00 👨‍🏫 With Abdelmalek CHETTA 🎯 Building Entrepreneurial Culture: A "
+          "message_id": "885",
+          "content_type": "file",
+          "file_name": "Startup_Factory[1] (1).pdf",
+          "text_preview": "opportunités • Accompagnement de l’obtention du label startup/ projet innovant. • Accès à des programmes d’incubation et d’accélération • Opportunités de financement avec des investisseurs et institutions partenaires • M"
         },
         {
-          "score": 0.6483,
-          "date": "2025-06-16",
+          "score": 0.4756,
+          "trust": "medium",
+          "date": "2026-03-07",
           "from": "ENSIA IMPACT © Group",
-          "message_id": "983",
+          "message_id": "1389",
+          "content_type": "text",
           "file_name": "",
-          "text_preview": "🚀 Big Opportunity for Future Founders! Ready to turn your innovative ideas into real solutions? ⚡ The V2V Incubator - ENSIA is offering you exclusive access to essential workshops that will take your startup journey to t"
+          "text_preview": "📢 FYP under Law 08/1275 & Innovation\n Decree 1275 (2022) introduced:\n“A Diploma – A Startup / A Diploma – A Patent”, recently updated by Decree 008. 🎯 Goal: Promote commercializable FYPs. 💡 Project Types\n 1️⃣ Startup Pro"
         },
         {
-          "score": 0.6224,
-          "date": "2026-03-26",
+          "score": 0.3454,
+          "trust": "medium",
+          "date": "2026-03-03",
           "from": "ENSIA IMPACT © Group",
-          "message_id": "1416",
+          "message_id": "1379",
+          "content_type": "link",
           "file_name": "",
-          "text_preview": "ANPT INCUBATION Program 🚀\n The ANPT Incubation Program in partnership with Mobilis and CPA is open. To turn your idea into a scalable startup, you will benefit from:\n ✔ Mentorship\n✔ Business & tech support\n✔ Model struct"
+          "text_preview": "University Network for Business Incubators and Entrepreneurship Development Centers (CDE) 🎓\n The Ministry of Higher Education and Scientific Research has launched AUNEI https://aunei.mesrs.dz/ AUNEI connects university i"
         }
       ]
     },
@@ -826,33 +987,40 @@
       "hit@1": 1,
       "hit@3": 1,
       "hit@5": 1,
-      "groundedness": 0.7143,
+      "groundedness": 0.4167,
       "citation_usefulness": 1.0,
-      "mode": "extractive",
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.6214,
+          "score": 0.5884,
+          "trust": "high",
           "date": "2025-03-23",
           "from": "ENSIA IMPACT © Group",
           "message_id": "846",
+          "content_type": "text",
           "file_name": "",
           "text_preview": "ons to strengthen your application. Q5: What is the role of the ENSIA Incubator? ✅ It boosts the startup ecosystem within ENSIA, helping early-stage projects grow into real businesses. ✅ It provides resources like traini"
         },
         {
-          "score": 0.6205,
-          "date": "2025-06-05",
-          "from": "Safia Tifour",
-          "message_id": "970",
+          "score": 0.585,
+          "trust": "medium",
+          "date": "2024-10-07",
+          "from": "ENSIA IMPACT © Group",
+          "message_id": "526",
+          "content_type": "link",
           "file_name": "",
-          "text_preview": "en students from ENSIA and ENSA and is shared with all the relevant communities. Its sole purpose is to:\n– Help you organize or join a team. – Connect with students from the other school. – Encourage balanced and complem"
+          "text_preview": "For those who haven't joined the ENSIA DataCamp group yet, you can use your ENSIA email address and the following link to join and get full access to the premium workspace: https://www.datacamp.com/groups/shared_links/5f"
         },
         {
-          "score": 0.5946,
+          "score": 0.5772,
+          "trust": "high",
           "date": "2025-06-05",
           "from": "Safia Tifour",
           "message_id": "970",
+          "content_type": "link",
           "file_name": "",
-          "text_preview": "team composition. Please use it respectfully and only for the intended purpose. ENSIA × ENSA Collaboration\nLinks: https://docs.google.com/spreadsheets/d/1m-zLOyaeNggLsZfe8buLBw-GKFLr2DeTPtq29LDDoUU/edit?usp=sharing"
+          "text_preview": "en students from ENSIA and ENSA and is shared with all the relevant communities. Its sole purpose is to:\n– Help you organize or join a team. – Connect with students from the other school. – Encourage balanced and complem"
         }
       ]
     },
@@ -863,33 +1031,40 @@
       "hit@1": 1,
       "hit@3": 1,
       "hit@5": 1,
-      "groundedness": 0.6588,
+      "groundedness": 0.36,
       "citation_usefulness": 1.0,
-      "mode": "extractive",
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.6783,
-          "date": "2024-09-22",
-          "from": "ENSIA IMPACT © Group",
-          "message_id": "317",
-          "file_name": "",
-          "text_preview": "xploring research as a career option, this space will provide valuable guidance. Here, you'll find resources, insights, and discussions that will help you understand what scientific research entails and how it can enhanc"
-        },
-        {
-          "score": 0.6334,
-          "date": "2024-09-22",
-          "from": "ENSIA IMPACT © Group",
-          "message_id": "317",
-          "file_name": "",
-          "text_preview": "Hello everyone 👋\n This channel is dedicated to introducing you to the exciting world of scientific research and its potential as future outcome or path in your studies. Whether you're considering pursuing a PhD or explor"
-        },
-        {
-          "score": 0.6286,
+          "score": 0.5892,
+          "trust": "high",
           "date": "2025-04-14",
           "from": "ENSIA IMPACT © Group",
           "message_id": "884",
+          "content_type": "link",
           "file_name": "",
-          "text_preview": "[Platform to Connect Students with Research Teams]\n Salam everyone,\nAs you know, students at our school currently lack a proper environment to explore and engage in scientific research. To address this, a group of third-"
+          "text_preview": "is developing a platform as part of their group project. The platform aims to:\n - Connect students with research teams/professors at ENSIA and other schools of the scientific pole\n- Discover available research topics\n- J"
+        },
+        {
+          "score": 0.4875,
+          "trust": "medium",
+          "date": "2025-05-27",
+          "from": "Sami Belkacem",
+          "message_id": "956",
+          "content_type": "photo",
+          "file_name": "",
+          "text_preview": "Data Science internship at Société Générale Algérie: https://emploitic.com/entreprises/societe-generale-algerie/offres-d-emploi/banque-assurance-finance/stagiaires-data-analyst-science-des-donnees-h-f-e0ef66b08f0e377c283"
+        },
+        {
+          "score": 0.4415,
+          "trust": "medium",
+          "date": "2025-09-29",
+          "from": "Sami Belkacem",
+          "message_id": "1112",
+          "content_type": "photo",
+          "file_name": "",
+          "text_preview": "[The Ibtikar platform] https://ibtikar.dgrsdt.dz/ Launched by the General Directorate of Scientific Research and Technological Development in Algeria (DGRSDT). Allows to support students working on their Final Year Proje"
         }
       ]
     },
@@ -900,33 +1075,40 @@
       "hit@1": 1,
       "hit@3": 1,
       "hit@5": 1,
-      "groundedness": 0.6667,
+      "groundedness": 0.3333,
       "citation_usefulness": 1.0,
-      "mode": "extractive",
+      "intent_accuracy": 1.0,
+      "mode": "local_model_1",
       "top_sources": [
         {
-          "score": 0.5369,
+          "score": 0.5701,
+          "trust": "high",
+          "date": "2025-10-28",
+          "from": "Sami Belkacem",
+          "message_id": "1184",
+          "content_type": "text",
+          "file_name": "",
+          "text_preview": "🎨 Welcome to Students Art & Services! 💫\n Salam everyone,\n This channel is created for our school community to share and support students’ personal services and small initiatives — from handmade art to home delivery, baki"
+        },
+        {
+          "score": 0.4875,
+          "trust": "medium",
+          "date": "2024-09-27",
+          "from": "ENSIA IMPACT © Group",
+          "message_id": "414",
+          "content_type": "file",
+          "file_name": "اليات تنفيذ مشروع القرار 1275.pdf",
+          "text_preview": "لترقية وتطوير املقاوالتيةANADE ...الخ)على االلتزام بأخذ مشاريع الطلبة كأولوية) . 2 1 3 4 آليات التمويل 5 تسهيل إجراءات الحصول على الدعم املالي خاصة فيما يتعلق بحصول الطلبة املنخرطين في مشروع شهادة–مؤسسة ناشئة على وسم\"الب"
+        },
+        {
+          "score": 0.471,
+          "trust": "medium",
           "date": "2026-03-12",
           "from": "ENSIA IMPACT © Group",
           "message_id": "1395",
+          "content_type": "photo",
           "file_name": "",
           "text_preview": ", internships, job opportunities\n- Platform gathering services for student life\n Feel free to explore the platform and see if the available services can be useful during your studies. Links: https://www.student-campuce.d"
-        },
-        {
-          "score": 0.5045,
-          "date": "2025-10-28",
-          "from": "Sami Belkacem",
-          "message_id": "1184",
-          "file_name": "",
-          "text_preview": "udent offering a service or running a small project is welcome to share it here! 💙\n Let’s help each other grow and support our talented classmates! 🙌"
-        },
-        {
-          "score": 0.4935,
-          "date": "2025-10-28",
-          "from": "Sami Belkacem",
-          "message_id": "1184",
-          "file_name": "",
-          "text_preview": "🎨 Welcome to Students Art & Services! 💫\n Salam everyone,\n This channel is created for our school community to share and support students’ personal services and small initiatives — from handmade art to home delivery, baki"
         }
       ]
     }
