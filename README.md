@@ -18,7 +18,7 @@ RAG-powered chatbot over Telegram-exported ENSIA IMPACT content.
   - attached PDFs (extracted text)
   - photos/images (OCR text)
 - Show grounded sources with message references (`date`, `from`, `message_id`)
-- In bot replies, source lines can include `content_type` and `file_name` when relevant
+- In bot replies, media source lines now include a human-readable topic preview (from file name or OCR/text preview) instead of only raw message IDs
 - Route message intent in `bot/telegram_bot.py`:
   - `smalltalk` (greetings/general chat) -> natural conversational response (no retrieval)
   - `ensia_query` (ENSIA-related) -> full RAG answer + optional sources
@@ -29,6 +29,47 @@ RAG-powered chatbot over Telegram-exported ENSIA IMPACT content.
 - If your message is conversational (example: "hi", "how are you", "who are you"), the bot replies normally without querying ENSIA index.
 - If your message looks ENSIA-related (internships, partnerships, incubator, FYP, events, etc.), the bot runs RAG and can attach sources depending on your `/sources` preference.
 - This avoids irrelevant retrieval answers for pure chat while keeping ENSIA answers grounded.
+
+## Phase 1 quick wins (implemented)
+
+- Query rewriting before retrieval:
+  - typo normalization (example: `parternships` -> `partnerships`)
+  - lightweight grammar cleanup and ENSIA intent expansion terms
+- Hybrid retrieval:
+  - dense vector retrieval + lexical BM25-style scoring fusion
+  - weighted fusion controlled by env vars
+- Context packing improvements:
+  - deduplicate by `message_id`
+  - diversity-aware selection to reduce near-duplicate chunks in context
+- Answer policy:
+  - responses are instructed to follow `Direct answer`, `Key points`, and `If unsure` sections
+
+## Phase 2 quality upgrades (implemented)
+
+- Multilingual reranker fallback:
+  - primary: `ENSIA_RERANKER_MODEL`
+  - fallback: `ENSIA_RERANKER_MULTILINGUAL_MODEL` for FR/AR/EN robustness
+- Tiny trained intent classifier:
+  - centroid classifier from `assets/intent_classifier_seed.json`
+  - intents: `smalltalk`, `ensia_query`, `admin_op`
+- Dynamic confidence calibration by intent type:
+  - partnerships use stricter thresholds
+  - events use slightly lower thresholds
+- Entity-aware retrieval:
+  - detects company names, years/dates, and event cues from query
+  - boosts chunks containing matched entities
+- Dedicated structured extractors:
+  - `pipeline/build_structured_tables.py` builds
+    - `data/processed/partnerships_table.json`
+    - `data/processed/events_timeline.json`
+  - these tables are injected into retrieval context for exact partnership/event answers
+
+Build/update Phase 2 artifacts:
+
+```cmd
+python training/train_intent_classifier.py
+python pipeline/build_structured_tables.py
+```
 
 ## Project layout
 
@@ -161,6 +202,24 @@ Intent and reranking controls:
 - `ENSIA_RERANKER_ENABLED` (default `1`): enable cross-encoder reranking.
 - `ENSIA_RERANKER_MODEL` (default `cross-encoder/ms-marco-MiniLM-L-6-v2`).
 - `ENSIA_RERANK_CANDIDATES` (default `24`): max dense candidates passed to reranker.
+
+Query rewrite / hybrid retrieval controls:
+
+- `ENSIA_QUERY_REWRITE_ENABLED` (default `1`)
+- `ENSIA_HYBRID_RETRIEVAL_ENABLED` (default `1`)
+- `ENSIA_HYBRID_DENSE_WEIGHT` (default `0.65`)
+- `ENSIA_HYBRID_BM25_WEIGHT` (default `0.35`)
+- `ENSIA_BM25_TOP_N` (default `40`)
+- `ENSIA_CONTEXT_DIVERSITY_ENABLED` (default `1`)
+- `ENSIA_CONTEXT_DIVERSITY_MAX_SIM` (default `0.72`)
+
+Phase 2 intent/reranker controls:
+
+- `ENSIA_RERANKER_MULTILINGUAL_MODEL` (default `BAAI/bge-reranker-v2-m3`)
+- `ENSIA_INTENT_CLASSIFIER_ENABLED` (default `1`)
+- `ENSIA_INTENT_CLASSIFIER_MIN_CONFIDENCE` (default `0.42`)
+- `ENSIA_CONF_PARTNERSHIP_TOP` / `ENSIA_CONF_PARTNERSHIP_AVG`
+- `ENSIA_CONF_EVENT_TOP` / `ENSIA_CONF_EVENT_AVG`
 
 Retrieval quality safeguards:
 

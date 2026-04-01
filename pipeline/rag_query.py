@@ -11,6 +11,7 @@ import os
 import re
 import sys
 import time
+from collections import Counter
 from urllib import error, request
 from dataclasses import dataclass
 from pathlib import Path
@@ -27,6 +28,12 @@ from config import (
 	ALLOW_GENERAL_FALLBACK,
 	ALLOW_EXTRACTIVE_FALLBACK,
 	COLLECTION_NAME,
+	CONF_EVENT_AVG,
+	CONF_EVENT_TOP,
+	CONF_PARTNERSHIP_AVG,
+	CONF_PARTNERSHIP_TOP,
+	CONTEXT_DIVERSITY_ENABLED,
+	CONTEXT_DIVERSITY_MAX_SIM,
 	EMBEDDING_MODEL,
 	GENERATION_BACKEND,
 	GENERATION_MIN_AVG_SCORE,
@@ -48,12 +55,20 @@ from config import (
 	LOCAL_BASE_URL,
 	LOCAL_MODEL_1,
 	LOCAL_MODEL_2,
+	BM25_TOP_N,
+	HYBRID_BM25_WEIGHT,
+	HYBRID_DENSE_WEIGHT,
+	HYBRID_RETRIEVAL_ENABLED,
+	QUERY_REWRITE_ENABLED,
 	RAG_MAX_CONTEXT_CHARS,
 	RAG_MIN_SIMILARITY,
 	RERANK_CANDIDATES,
 	RERANKER_ENABLED,
+	RERANKER_MULTILINGUAL_MODEL,
 	RERANKER_MODEL,
 	RAG_TOP_K,
+	STRUCTURED_EVENTS_PATH,
+	STRUCTURED_PARTNERSHIPS_PATH,
 	VECTORSTORE_DIR,
 )
 
@@ -96,13 +111,23 @@ class RAGEngine:
 		self._hf_tokenizer: Any | None = None
 		self._hf_model: Any | None = None
 		self._cross_encoder: Any | None = None
+		self._cross_encoder_multilingual: Any | None = None
 		self._cross_encoder_disabled = not RERANKER_ENABLED
+		self._bm25_docs: list[str] = []
+		self._bm25_metas: list[dict[str, Any]] = []
+		self._bm25_tokens: list[list[str]] = []
+		self._bm25_df: Counter[str] = Counter()
+		self._bm25_avgdl = 0.0
+		self._bm25_ready = False
+		self._structured_partners: list[dict[str, Any]] = []
+		self._structured_events: list[dict[str, Any]] = []
+		self._load_structured_tables()
 
 	def retrieve(self, query: str, top_k: int | None = None) -> list[RetrievedChunk]:
 		k = top_k or self.top_k
 		pool_k = max(k, min(RERANK_CANDIDATES, k * 4))
-		normalized_query = self._normalize_query_typos(query)
-		expanded_query = self._expand_query(normalized_query)
+		rewritten_query = self._rewrite_query_for_retrieval(query)
+		expanded_query = self._expand_query(rewritten_query)
 		query_vec = self.model.encode([expanded_query]).tolist()
 		result = self.collection.query(
 			query_embeddings=query_vec,
@@ -133,10 +158,28 @@ class RAGEngine:
 				for doc, meta, dist in zip(docs[:pool_k], metas[:pool_k], distances[:pool_k])
 			]
 
-		keyword_reranked = self._rerank_by_keyword_overlap(query, retrieved)
-		cross_reranked = self._rerank_with_cross_encoder(query, keyword_reranked)
-		deduped = self._dedupe_by_message_id(cross_reranked)
-		return deduped[:k]
+		if HYBRID_RETRIEVAL_ENABLED:
+			retrieved = self._fuse_with_bm25(rewritten_query, retrieved, top_n=max(pool_k, BM25_TOP_N))
+
+		keyword_reranked = self._rerank_by_keyword_overlap(rewritten_query, retrieved)
+		cross_reranked = self._rerank_with_cross_encoder(rewritten_query, keyword_reranked)
+		entities = self._extract_entities(rewritten_query)
+		boosted = self._apply_entity_boosts(cross_reranked, entities)
+		deduped = self._dedupe_by_message_id(boosted)
+		deduped = self._inject_structured_chunks(rewritten_query, deduped)
+		diverse = self._select_diverse_chunks(deduped)
+		return diverse[:k]
+
+	def _rewrite_query_for_retrieval(self, query: str) -> str:
+		rewritten = self._normalize_query_typos(query)
+		if not QUERY_REWRITE_ENABLED:
+			return rewritten
+		clean = re.sub(r"\b(with|our|have|has|about|please|tell me|search|find)\b", " ", rewritten, flags=re.IGNORECASE)
+		clean = re.sub(r"\s+", " ", clean).strip()
+		q_lower = clean.lower()
+		if "ensia" in q_lower and any(t in q_lower for t in ["partner", "partnership", "partnerships", "partenariat", "شراكة"]):
+			clean = f"{clean} partnerships with ENSIA school companies institutions"
+		return clean or rewritten
 
 	def _normalize_query_typos(self, query: str) -> str:
 		parts = re.findall(r"\w+|\W+", query)
@@ -160,6 +203,128 @@ class RAGEngine:
 			deduped.append(chunk)
 		return deduped
 
+	def _select_diverse_chunks(self, chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
+		if not CONTEXT_DIVERSITY_ENABLED or len(chunks) <= 2:
+			return chunks
+		selected: list[RetrievedChunk] = []
+		for chunk in chunks:
+			if not selected:
+				selected.append(chunk)
+				continue
+			candidate_tokens = self._tokenize(chunk.text)
+			max_sim = 0.0
+			for s in selected:
+				s_tokens = self._tokenize(s.text)
+				inter = len(candidate_tokens.intersection(s_tokens))
+				union = max(1, len(candidate_tokens.union(s_tokens)))
+				sim = inter / union
+				if sim > max_sim:
+					max_sim = sim
+			if max_sim <= CONTEXT_DIVERSITY_MAX_SIM or len(selected) < 2:
+				selected.append(chunk)
+		return selected
+
+	def _ensure_bm25_corpus(self) -> None:
+		if self._bm25_ready:
+			return
+		self._bm25_ready = True
+		try:
+			total = self.collection.count()
+			if total <= 0:
+				return
+			batch = 500
+			all_docs: list[str] = []
+			all_metas: list[dict[str, Any]] = []
+			for offset in range(0, total, batch):
+				res = self.collection.get(offset=offset, limit=batch, include=["documents", "metadatas"])
+				docs = res.get("documents", []) or []
+				metas = res.get("metadatas", []) or []
+				for doc, meta in zip(docs, metas):
+					if not isinstance(doc, str) or not doc.strip():
+						continue
+					all_docs.append(doc)
+					all_metas.append(meta or {})
+			self._bm25_docs = all_docs
+			self._bm25_metas = all_metas
+			self._bm25_tokens = [list(self._tokenize(d)) for d in self._bm25_docs]
+			lengths = [len(t) for t in self._bm25_tokens if t]
+			self._bm25_avgdl = (sum(lengths) / len(lengths)) if lengths else 0.0
+			for tokens in self._bm25_tokens:
+				for term in set(tokens):
+					self._bm25_df[term] += 1
+		except Exception as err:
+			logger.warning("BM25 corpus init failed: %s", err)
+
+	def _bm25_score(self, query_tokens: list[str], doc_tokens: list[str], k1: float = 1.5, b: float = 0.75) -> float:
+		if not query_tokens or not doc_tokens or not self._bm25_docs:
+			return 0.0
+		tf = Counter(doc_tokens)
+		dl = len(doc_tokens)
+		avgdl = self._bm25_avgdl or 1.0
+		N = len(self._bm25_docs)
+		score = 0.0
+		for term in query_tokens:
+			if term not in tf:
+				continue
+			df = self._bm25_df.get(term, 0)
+			idf = math.log(1 + ((N - df + 0.5) / (df + 0.5)))
+			num = tf[term] * (k1 + 1)
+			den = tf[term] + k1 * (1 - b + b * (dl / avgdl))
+			score += idf * (num / max(1e-9, den))
+		return score
+
+	def _fuse_with_bm25(self, query: str, dense_chunks: list[RetrievedChunk], top_n: int) -> list[RetrievedChunk]:
+		self._ensure_bm25_corpus()
+		if not self._bm25_docs:
+			return dense_chunks
+		q_tokens = list(self._tokenize(query))
+		if not q_tokens:
+			return dense_chunks
+
+		bm25_scored: list[tuple[int, float]] = []
+		for idx, doc_tokens in enumerate(self._bm25_tokens):
+			s = self._bm25_score(q_tokens, doc_tokens)
+			if s > 0:
+				bm25_scored.append((idx, s))
+		bm25_scored.sort(key=lambda x: x[1], reverse=True)
+		bm25_scored = bm25_scored[:top_n]
+
+		dense_map: dict[str, RetrievedChunk] = {}
+		for c in dense_chunks:
+			key = f"{c.metadata.get('message_id','')}::{hash(c.text)}"
+			dense_map[key] = c
+
+		combined: dict[str, RetrievedChunk] = {}
+		dense_scores = [c.score for c in dense_chunks] or [0.0]
+		dense_min, dense_max = min(dense_scores), max(dense_scores)
+		bm25_vals = [s for _, s in bm25_scored] or [0.0]
+		bm25_min, bm25_max = min(bm25_vals), max(bm25_vals)
+
+		def norm(v: float, lo: float, hi: float) -> float:
+			return 0.0 if hi <= lo else (v - lo) / (hi - lo)
+
+		for c in dense_chunks:
+			key = f"{c.metadata.get('message_id','')}::{hash(c.text)}"
+			d = norm(c.score, dense_min, dense_max)
+			meta = dict(c.metadata)
+			meta.setdefault("dense_score", c.score)
+			fused = (HYBRID_DENSE_WEIGHT * d)
+			combined[key] = RetrievedChunk(text=c.text, score=fused, metadata=meta)
+
+		for idx, bm in bm25_scored:
+			doc = self._bm25_docs[idx]
+			meta = dict(self._bm25_metas[idx])
+			key = f"{meta.get('message_id','')}::{hash(doc)}"
+			b = norm(bm, bm25_min, bm25_max)
+			if key in combined:
+				curr = combined[key]
+				combined[key] = RetrievedChunk(text=curr.text, score=curr.score + (HYBRID_BM25_WEIGHT * b), metadata=curr.metadata)
+			else:
+				combined[key] = RetrievedChunk(text=doc, score=(HYBRID_BM25_WEIGHT * b), metadata=meta)
+
+		fused_chunks = sorted(combined.values(), key=lambda c: c.score, reverse=True)
+		return fused_chunks
+
 	def _get_cross_encoder(self) -> Any | None:
 		if self._cross_encoder_disabled:
 			return None
@@ -171,9 +336,17 @@ class RAGEngine:
 			self._cross_encoder = CrossEncoder(RERANKER_MODEL)
 			return self._cross_encoder
 		except Exception as err:
-			self._cross_encoder_disabled = True
-			logger.warning("Cross-encoder reranker disabled: %s", err)
-			return None
+			logger.warning("Primary reranker unavailable, trying multilingual fallback: %s", err)
+			try:
+				from sentence_transformers import CrossEncoder  # type: ignore
+
+				if self._cross_encoder_multilingual is None:
+					self._cross_encoder_multilingual = CrossEncoder(RERANKER_MULTILINGUAL_MODEL)
+				return self._cross_encoder_multilingual
+			except Exception as err2:
+				self._cross_encoder_disabled = True
+				logger.warning("Cross-encoder reranker disabled: %s", err2)
+				return None
 
 	def _rerank_with_cross_encoder(self, query: str, chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
 		reranker = self._get_cross_encoder()
@@ -193,6 +366,75 @@ class RAGEngine:
 			blended = (0.75 * chunk.score) + (0.25 * ce_norm)
 			reweighted.append(RetrievedChunk(text=chunk.text, score=blended, metadata=chunk.metadata))
 		return sorted(reweighted, key=lambda c: c.score, reverse=True)
+
+	def _load_structured_tables(self) -> None:
+		try:
+			if STRUCTURED_PARTNERSHIPS_PATH.exists():
+				data = json.loads(STRUCTURED_PARTNERSHIPS_PATH.read_text(encoding="utf-8"))
+				self._structured_partners = data.get("partners", [])
+		except Exception as err:
+			logger.warning("Failed loading partnerships table: %s", err)
+		try:
+			if STRUCTURED_EVENTS_PATH.exists():
+				data = json.loads(STRUCTURED_EVENTS_PATH.read_text(encoding="utf-8"))
+				self._structured_events = data.get("events", [])
+		except Exception as err:
+			logger.warning("Failed loading events table: %s", err)
+
+	def _extract_entities(self, query: str) -> dict[str, set[str]]:
+		q = query.lower()
+		entities: dict[str, set[str]] = {"company": set(), "date": set(), "event": set()}
+		for partner in self._structured_partners:
+			name = str(partner.get("name", "")).lower().strip()
+			if name and name in q:
+				entities["company"].add(name)
+		for m in re.findall(r"\b20\d{2}\b", query):
+			entities["date"].add(m)
+		for hint in ["summit", "conference", "hackathon", "event", "forum", "expo", "tech"]:
+			if hint in q:
+				entities["event"].add(hint)
+		return entities
+
+	def _apply_entity_boosts(self, chunks: list[RetrievedChunk], entities: dict[str, set[str]]) -> list[RetrievedChunk]:
+		if not any(entities.values()):
+			return chunks
+		boosted: list[RetrievedChunk] = []
+		for c in chunks:
+			text_l = c.text.lower()
+			boost = 0.0
+			if any(e in text_l for e in entities["company"]):
+				boost += 0.08
+			if any(e in text_l for e in entities["date"]):
+				boost += 0.06
+			if any(e in text_l for e in entities["event"]):
+				boost += 0.05
+			boosted.append(RetrievedChunk(text=c.text, score=c.score + boost, metadata=c.metadata))
+		return sorted(boosted, key=lambda x: x.score, reverse=True)
+
+	def _inject_structured_chunks(self, query: str, chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
+		q = query.lower()
+		injected: list[RetrievedChunk] = list(chunks)
+		if any(t in q for t in ["partner", "partnership", "partenariat", "شراكة"]) and self._structured_partners:
+			lines = [f"- {p.get('name','')} (first_seen={p.get('first_seen','')})" for p in self._structured_partners[:25]]
+			injected.insert(
+				0,
+				RetrievedChunk(
+					text="Structured partnerships table:\n" + "\n".join(lines),
+					score=0.99,
+					metadata={"message_id": "structured_partnerships", "content_type": "table", "date": "", "from": "system"},
+				),
+			)
+		if any(t in q for t in ["event", "conference", "summit", "hackathon"]) and self._structured_events:
+			lines = [f"- {e.get('date','')} | {e.get('preview','')}" for e in self._structured_events[:20]]
+			injected.insert(
+				0,
+				RetrievedChunk(
+					text="Structured events timeline:\n" + "\n".join(lines),
+					score=0.96,
+					metadata={"message_id": "structured_events", "content_type": "table", "date": "", "from": "system"},
+				),
+			)
+		return injected
 
 	def _tokenize(self, text: str) -> set[str]:
 		return {w for w in re.findall(r"\w+", text.lower()) if len(w) > 2}
@@ -269,6 +511,14 @@ class RAGEngine:
 
 		return "\n".join(context_parts)
 
+	def _answer_format_policy(self) -> str:
+		return (
+			"Format your response exactly with these sections:\n"
+			"Direct answer: <1-2 sentences>\n"
+			"Key points:\n- <bullet 1>\n- <bullet 2>\n"
+			"If unsure: <state missing context briefly>"
+		)
+
 	def _generate_with_gemini(self, query: str, chunks: list[RetrievedChunk], strict_grounding: bool = True) -> str:
 		if not GEMINI_API_KEY:
 			raise RuntimeError("GEMINI_API_KEY (or GOOGLE_API_KEY) is missing.")
@@ -283,14 +533,16 @@ class RAGEngine:
 				"When you use information, cite sources like [Source 1].\n\n"
 				f"Question:\n{query}\n\n"
 				f"Context:\n{context}\n\n"
-				"Provide a concise answer in the same language as the question."
+				"Provide a concise answer in the same language as the question.\n"
+				f"{self._answer_format_policy()}"
 			)
 		else:
 			prompt = (
 				"You are a helpful assistant. "
 				"Answer with your general knowledge in the same language as the question. "
 				"If the user asks for ENSIA-specific facts and you are unsure, say that server context is insufficient.\n\n"
-				f"Question:\n{query}\n"
+				f"Question:\n{query}\n\n"
+				f"{self._answer_format_policy()}"
 			)
 
 		model_candidates = [GEMINI_MODEL]
@@ -387,14 +639,16 @@ class RAGEngine:
 				"Answer ONLY using the provided context. "
 				"Do not invent ENSIA-specific facts not in context. "
 				"If the context is insufficient, say so clearly. "
-				"When you use information, cite sources like [Source 1]."
+				"When you use information, cite sources like [Source 1]. "
+				f"{self._answer_format_policy()}"
 			)
 			user_content = f"Question:\n{query}\n\nContext:\n{context}"
 		else:
 			system_prompt = (
 				"You are a helpful assistant. "
 				"Answer with your general knowledge in the same language as the user. "
-				"If the user asks ENSIA-specific facts and you are unsure, clearly say context is insufficient."
+				"If the user asks ENSIA-specific facts and you are unsure, clearly say context is insufficient. "
+				f"{self._answer_format_policy()}"
 			)
 			user_content = query
 		
@@ -492,14 +746,16 @@ class RAGEngine:
 				"You are a helpful assistant for ENSIA IMPACT community. "
 				"Answer only from provided context. If context is insufficient, say that clearly. "
 				"Do not invent ENSIA-specific facts not in context. "
-				"Cite sources like [Source 1] when relevant."
+				"Cite sources like [Source 1] when relevant. "
+				f"{self._answer_format_policy()}"
 			)
 			user_content = f"Question:\n{query}\n\nContext:\n{context}"
 		else:
 			system_prompt = (
 				"You are a helpful assistant. "
 				"Answer with general knowledge in the same language as the user. "
-				"If ENSIA-specific facts are requested and you are unsure, say context is insufficient."
+				"If ENSIA-specific facts are requested and you are unsure, say context is insufficient. "
+				f"{self._answer_format_policy()}"
 			)
 			user_content = query
 		messages = [
@@ -554,14 +810,16 @@ class RAGEngine:
 				"Answer ONLY using the provided context. "
 				"Do not invent ENSIA-specific facts not in context. "
 				"If context is insufficient, clearly say that. "
-				"Cite sources like [Source 1]."
+				"Cite sources like [Source 1]. "
+				f"{self._answer_format_policy()}"
 			)
 			user_content = f"Question:\n{query}\n\nContext:\n{context}"
 		else:
 			system_prompt = (
 				"You are a helpful assistant. "
 				"Answer with general knowledge in the same language as the user. "
-				"If ENSIA-specific facts are requested and you are unsure, say context is insufficient."
+				"If ENSIA-specific facts are requested and you are unsure, say context is insufficient. "
+				f"{self._answer_format_policy()}"
 			)
 			user_content = query
 		payload = {
@@ -686,9 +944,27 @@ class RAGEngine:
 			return "extractive"
 		return backend
 
-	def _has_confident_context(self, chunks: list[RetrievedChunk]) -> tuple[bool, str | None]:
+	def _query_intent_type(self, query: str) -> str:
+		q = query.lower()
+		if any(t in q for t in ["partner", "partnership", "partenariat", "شراكة", "company", "companies"]):
+			return "partnership"
+		if any(t in q for t in ["event", "conference", "summit", "hackathon", "forum", "expo"]):
+			return "event"
+		return "general"
+
+	def _has_confident_context(self, query: str, chunks: list[RetrievedChunk]) -> tuple[bool, str | None]:
 		if not chunks:
 			return False, "no_chunks"
+		intent_type = self._query_intent_type(query)
+		min_top = GENERATION_MIN_TOP_SCORE
+		min_avg = GENERATION_MIN_AVG_SCORE
+		if intent_type == "partnership":
+			min_top = max(min_top, CONF_PARTNERSHIP_TOP)
+			min_avg = max(min_avg, CONF_PARTNERSHIP_AVG)
+		elif intent_type == "event":
+			min_top = min(min_top, CONF_EVENT_TOP)
+			min_avg = min(min_avg, CONF_EVENT_AVG)
+
 		ranked_scores = sorted(
 			max(float(c.score), float(c.metadata.get("dense_score", c.score))) for c in chunks
 		)
@@ -696,10 +972,10 @@ class RAGEngine:
 		top_score = ranked_scores[0]
 		effective_n = min(3, len(ranked_scores))
 		avg_score = sum(ranked_scores[:effective_n]) / effective_n
-		if top_score < GENERATION_MIN_TOP_SCORE:
-			return False, f"top_score={top_score:.3f} < min_top={GENERATION_MIN_TOP_SCORE:.3f}"
-		if avg_score < GENERATION_MIN_AVG_SCORE:
-			return False, f"top{effective_n}_avg={avg_score:.3f} < min_avg={GENERATION_MIN_AVG_SCORE:.3f}"
+		if top_score < min_top:
+			return False, f"top_score={top_score:.3f} < min_top={min_top:.3f} ({intent_type})"
+		if avg_score < min_avg:
+			return False, f"top{effective_n}_avg={avg_score:.3f} < min_avg={min_avg:.3f} ({intent_type})"
 		return True, None
 
 	def _sanitize_error(self, err: Exception) -> str:
@@ -709,6 +985,25 @@ class RAGEngine:
 		if GROQ_API_KEY and GROQ_API_KEY in msg:
 			msg = msg.replace(GROQ_API_KEY, "***")
 		return f"{err.__class__.__name__}: {msg}" if msg else err.__class__.__name__
+
+	def _enforce_answer_structure(self, text: str) -> str:
+		clean = (text or "").strip()
+		if not clean:
+			return (
+				"Direct answer: I could not generate a complete response.\n\n"
+				"Key points:\n- No answer content was produced.\n\n"
+				"If unsure: Please retry with a more specific ENSIA question."
+			)
+		if "direct answer:" not in clean.lower():
+			clean = f"Direct answer: {clean}"
+		if "key points:" not in clean.lower():
+			clean += "\n\nKey points:\n- See direct answer above."
+		if "if unsure:" not in clean.lower():
+			clean += "\n\nIf unsure: Please provide a more specific ENSIA question (company, date, event, or keyword)."
+		return clean
+
+	def _finalize_answer(self, answer: str, mode: str, generation_error: str | None) -> tuple[str, str, str | None]:
+		return self._enforce_answer_structure(answer), mode, generation_error
 
 	def _general_fallback_enabled(self, has_chunks: bool, confident: bool) -> bool:
 		if not ALLOW_GENERAL_FALLBACK:
@@ -725,15 +1020,15 @@ class RAGEngine:
 	def _generate_general(self, backend: str, query: str) -> tuple[str, str, str | None]:
 		try:
 			if backend == "gemini":
-				return self._generate_with_gemini(query, [], strict_grounding=False), "gemini-general", None
+				return self._finalize_answer(self._generate_with_gemini(query, [], strict_grounding=False), "gemini-general", None)
 			if backend == "groq":
-				return self._generate_with_groq(query, [], strict_grounding=False), "groq-general", None
+				return self._finalize_answer(self._generate_with_groq(query, [], strict_grounding=False), "groq-general", None)
 			if backend == "hf_lora":
-				return self._generate_with_hf_lora(query, [], strict_grounding=False), "hf_lora-general", None
+				return self._finalize_answer(self._generate_with_hf_lora(query, [], strict_grounding=False), "hf_lora-general", None)
 			if backend == "local_model_1":
-				return self._generate_with_local_endpoint(query, [], LOCAL_MODEL_1, strict_grounding=False), "local_model_1-general", None
+				return self._finalize_answer(self._generate_with_local_endpoint(query, [], LOCAL_MODEL_1, strict_grounding=False), "local_model_1-general", None)
 			if backend == "local_model_2":
-				return self._generate_with_local_endpoint(query, [], LOCAL_MODEL_2, strict_grounding=False), "local_model_2-general", None
+				return self._finalize_answer(self._generate_with_local_endpoint(query, [], LOCAL_MODEL_2, strict_grounding=False), "local_model_2-general", None)
 		except Exception as err:
 			return (
 				"General generation fallback failed. Please retry or switch generation backend.",
@@ -758,7 +1053,7 @@ class RAGEngine:
 				None,
 			)
 
-		confident, confidence_reason = self._has_confident_context(chunks)
+		confident, confidence_reason = self._has_confident_context(query, chunks)
 		if not confident:
 			if self._general_fallback_enabled(has_chunks=True, confident=False):
 				return self._generate_general(backend, query)
@@ -772,7 +1067,7 @@ class RAGEngine:
 		def finalize_failure(err: Exception) -> tuple[str, str, str | None]:
 			safe_err = self._sanitize_error(err)
 			if ALLOW_EXTRACTIVE_FALLBACK:
-				return self._generate_extractive(query, chunks), "extractive-fallback", safe_err
+				return self._finalize_answer(self._generate_extractive(query, chunks), "extractive-fallback", safe_err)
 			return (
 				"Generation failed for the selected backend and extractive fallback is disabled. "
 				"Please retry, switch backend, or check provider credentials/connectivity.",
@@ -782,35 +1077,35 @@ class RAGEngine:
 
 		if backend == "gemini":
 			try:
-				return self._generate_with_gemini(query, chunks, strict_grounding=True), "gemini", None
+				return self._finalize_answer(self._generate_with_gemini(query, chunks, strict_grounding=True), "gemini", None)
 			except Exception as err:
 				return finalize_failure(err)
 
 		if backend == "groq":
 			try:
-				return self._generate_with_groq(query, chunks, strict_grounding=True), "groq", None
+				return self._finalize_answer(self._generate_with_groq(query, chunks, strict_grounding=True), "groq", None)
 			except Exception as err:
 				return finalize_failure(err)
 
 		if backend == "hf_lora":
 			try:
-				return self._generate_with_hf_lora(query, chunks, strict_grounding=True), "hf_lora", None
+				return self._finalize_answer(self._generate_with_hf_lora(query, chunks, strict_grounding=True), "hf_lora", None)
 			except Exception as err:
 				return finalize_failure(err)
 
 		if backend == "local_model_1":
 			try:
-				return self._generate_with_local_endpoint(query, chunks, LOCAL_MODEL_1, strict_grounding=True), "local_model_1", None
+				return self._finalize_answer(self._generate_with_local_endpoint(query, chunks, LOCAL_MODEL_1, strict_grounding=True), "local_model_1", None)
 			except Exception as err:
 				return finalize_failure(err)
 
 		if backend == "local_model_2":
 			try:
-				return self._generate_with_local_endpoint(query, chunks, LOCAL_MODEL_2, strict_grounding=True), "local_model_2", None
+				return self._finalize_answer(self._generate_with_local_endpoint(query, chunks, LOCAL_MODEL_2, strict_grounding=True), "local_model_2", None)
 			except Exception as err:
 				return finalize_failure(err)
 
-		return self._generate_extractive(query, chunks), "extractive", None
+		return self._finalize_answer(self._generate_extractive(query, chunks), "extractive", None)
 
 	def answer_query(self, query: str, top_k: int | None = None) -> dict[str, Any]:
 		chunks = self.retrieve(query, top_k=top_k)

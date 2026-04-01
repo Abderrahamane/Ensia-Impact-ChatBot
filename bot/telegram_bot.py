@@ -30,6 +30,9 @@ from config import (
 	GENERATION_BACKEND,
 	FEEDBACK_PATH,
 	GEMINI_API_KEY,
+	INTENT_CLASSIFIER_ENABLED,
+	INTENT_CLASSIFIER_MIN_CONFIDENCE,
+	INTENT_MODEL_PATH,
 	INTENT_MIN_SCORE,
 	LOG_DIR,
 	LOG_LEVEL,
@@ -41,6 +44,7 @@ from config import (
 	VECTORSTORE_DIR,
 )
 from ops.backup_data import run_backup
+from pipeline.intent_classifier import IntentRouter
 from pipeline.rag_query import RAGEngine
 
 
@@ -105,6 +109,7 @@ runtime_metrics: dict[str, Any] = {
 	"last_query_at": None,
 	"last_error": None,
 }
+intent_router: IntentRouter | None = None
 
 SMALLTALK_KEYWORDS = {
 	"en": {"hi", "hello", "hey", "how are you", "who are you", "what are you", "thanks", "thank you", "bye", "good morning", "good evening"},
@@ -152,6 +157,23 @@ def get_engine() -> RAGEngine:
 	if engine is None:
 		engine = RAGEngine()
 	return engine
+
+
+def get_intent_router() -> IntentRouter | None:
+	global intent_router
+	if not INTENT_CLASSIFIER_ENABLED:
+		return None
+	if intent_router is None:
+		try:
+			intent_router = IntentRouter(
+				model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+				seed_path=INTENT_MODEL_PATH,
+				min_confidence=INTENT_CLASSIFIER_MIN_CONFIDENCE,
+			)
+		except Exception as err:
+			logging.warning("Intent classifier disabled at runtime: %s", err)
+			return None
+	return intent_router
 
 
 def get_sources_pref(user_id: int) -> bool:
@@ -408,6 +430,24 @@ def _select_media_sources(sources: list[dict[str, Any]]) -> list[tuple[dict[str,
 	return selected
 
 
+def _clean_source_preview(src: dict[str, Any]) -> str:
+	file_name = (src.get("file_name") or "").strip()
+	preview = (src.get("text_preview") or "").strip()
+	if file_name:
+		base = file_name.rsplit(".", 1)[0]
+		if base:
+			return base[:110]
+	if preview:
+		preview = re.sub(r"\s+", " ", preview)
+		preview = re.sub(r"^links?:\s*", "", preview, flags=re.IGNORECASE)
+		preview = preview.strip(" -:|\n\t")
+		if len(preview) > 110:
+			preview = preview[:107].rstrip() + "..."
+		if preview:
+			return preview
+	return "media attachment"
+
+
 def ensia_intent_score(text: str) -> float:
 	norm = _normalize_text(text)
 	tokens = _normalize_intent_tokens(_tokenize_for_intent(norm))
@@ -490,6 +530,14 @@ def _looks_conversational(text: str) -> bool:
 
 def detect_intent(text: str) -> str:
 	norm = _normalize_text(text)
+	router = get_intent_router()
+	if router is not None:
+		prediction = router.predict(norm)
+		if prediction.label == "admin_op":
+			return "smalltalk"
+		if prediction.label in {"smalltalk", "ensia_query"}:
+			return prediction.label
+
 	if _is_clear_smalltalk(norm) or _looks_conversational(norm):
 		return "smalltalk"
 
@@ -580,11 +628,10 @@ async def handle_message(update: Any, context: ContextTypes.DEFAULT_TYPE) -> Non
 			top_sources = media_sources[:2]
 			lines = ["\n\nSources:"]
 			for src, label in top_sources:
-				file_name = src.get("file_name", "")
-				detail = f" | {label}"
-				if file_name:
-					detail += f" ({file_name})"
-				lines.append(f"- {src['date']} | {src['from']} | msg {src['message_id']}{detail}")
+				topic = _clean_source_preview(src)
+				lines.append(
+					f"- {src['date']} | {src['from']} | {label} | {topic} (msg {src['message_id']})"
+				)
 			answer += "\n" + "\n".join(lines)
 
 	logging.info(

@@ -1,0 +1,27 @@
+{
+  "classes": {
+    "smalltalk": [
+      "hello",
+      "hi",
+      "how are you",
+      "what can you do",
+      "thanks",
+      "bonjour",
+      "salut",
+      "مرحبا"
+    ],
+    "ensia_query": [
+      "what are current school partnerships",
+      "give me internship opportunities in ensia",
+      "search resources about datacamp",
+      "what are ensia impact events",
+      "ما هي شراكات المدرسة"
+    ],
+    "admin_op": [
+      "/health",
+      "/stats",
+      "/backup_now",
+      "check bot health"
+    ]
+  }
+}
