@@ -107,6 +107,12 @@ body {
   font-size: 18px;
 }
 
+.subtitle {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .status {
   margin: 0;
   padding: 6px 10px;
@@ -154,6 +160,25 @@ body {
   line-height: 1.45;
   padding: 12px 14px;
   border-radius: 12px;
+}
+
+.msg-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.copy-btn {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
 }
 
 .msg.user {
@@ -212,6 +237,27 @@ body {
 .composer textarea:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1000;
+  background: #111827;
+  color: #e5e7eb;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: 0.2s ease;
+  pointer-events: none;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 @media (max-width: 900px) {

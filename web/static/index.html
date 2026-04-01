@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ENSIA IMPACT Chat</title>
-  <link rel="stylesheet" href="static/styles.css" />
+  <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -22,7 +22,10 @@
 
     <main class="chat-main">
       <header class="topbar">
-        <h1>Assistant</h1>
+        <div>
+          <h1>Assistant</h1>
+          <p class="subtitle">Ask about ENSIA partnerships, events, internships, and resources.</p>
+        </div>
         <p id="status" class="status">Checking server status...</p>
       </header>
 
@@ -41,6 +44,8 @@
       </form>
     </main>
   </div>
+
+  <div id="toast" class="toast" aria-live="polite"></div>
 
   <script src="/static/app.js"></script>
 </body>

@@ -9,6 +9,7 @@ const exportBtn = document.getElementById("exportBtn");
 const apiBaseInput = document.getElementById("apiBaseInput");
 const saveApiBtn = document.getElementById("saveApiBtn");
 const quickPromptsEl = document.getElementById("quickPrompts");
+const toastEl = document.getElementById("toast");
 const CHAT_STORAGE_KEY = "ensia_web_chat_v1";
 const THEME_STORAGE_KEY = "ensia_web_theme";
 const API_BASE_KEY = "ensia_api_base";
@@ -30,6 +31,13 @@ function setOnlineState(isOnline, message) {
   statusEl.classList.add(isOnline ? "ok" : "down");
   inputEl.disabled = !isOnline;
   sendBtn.disabled = !isOnline;
+}
+
+function showToast(message) {
+  if (!toastEl) return;
+  toastEl.textContent = message;
+  toastEl.classList.add("show");
+  setTimeout(() => toastEl.classList.remove("show"), 1800);
 }
 
 function saveChatHistory() {
@@ -58,7 +66,32 @@ function addMessage(role, text, sources = []) {
 
   const div = document.createElement("div");
   div.className = `msg ${role}`;
-  div.textContent = text;
+
+  const meta = document.createElement("div");
+  meta.className = "msg-meta";
+  const ts = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  meta.textContent = role === "user" ? `You · ${ts}` : `Assistant · ${ts}`;
+  div.appendChild(meta);
+
+  if (role === "bot") {
+    const copyBtn = document.createElement("button");
+    copyBtn.className = "copy-btn";
+    copyBtn.type = "button";
+    copyBtn.textContent = "Copy";
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("Copied response");
+      } catch {
+        showToast("Copy failed");
+      }
+    });
+    meta.appendChild(copyBtn);
+  }
+
+  const content = document.createElement("div");
+  content.textContent = text;
+  div.appendChild(content);
   wrap.appendChild(div);
 
   if (role === "bot" && Array.isArray(sources) && sources.length) {
@@ -72,7 +105,7 @@ function addMessage(role, text, sources = []) {
       }
       return label;
     });
-    src.innerHTML = "Sources: " + bits.join(" | ");
+    src.innerHTML = "Sources: " + (bits.length ? bits.join(" | ") : "n/a");
     wrap.appendChild(src);
   }
 
@@ -187,6 +220,7 @@ if (apiBaseInput) {
 if (saveApiBtn) {
   saveApiBtn.addEventListener("click", () => {
     localStorage.setItem(API_BASE_KEY, (apiBaseInput.value || "").trim());
+    showToast("API endpoint saved");
     checkHealth();
   });
 }

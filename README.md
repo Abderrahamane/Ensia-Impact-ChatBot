@@ -9,6 +9,39 @@ RAG-powered chatbot over Telegram-exported ENSIA IMPACT content.
 - Phase 3: `pipeline/rag_query.py` (done)
 - Telegram interface: `bot/telegram_bot.py` (ready)
 
+## Frontend deploy (Vercel) - step by step
+
+Use this to publish the website UI and share a link with friends.
+
+1) Commit/push latest code to GitHub.
+
+2) Open Vercel and import your repo.
+
+3) In project settings, set:
+
+- Framework Preset: `Other`
+- Root Directory: repository root (default)
+- Build Command: *(leave empty)*
+- Output Directory: *(leave empty)*
+
+4) In Vercel project, add config file path already included in repo:
+
+- `deploy/frontend/vercel.json`
+
+5) Deploy project and open generated URL (example: `https://your-app.vercel.app`).
+
+6) In website sidebar, set `API base URL` and click `Save endpoint`.
+
+Important for friend testing:
+
+- If your model/backend stays on your laptop, friends need a public reachable backend URL (for example a temporary tunnel).
+- Without a reachable backend URL, friends will see the UI but chat requests will fail/offline.
+
+Quick backend URL examples:
+
+- Local only (works only on your machine): `http://127.0.0.1:8000`
+- Public/tunnel URL (works for friends): `https://your-public-backend-url`
+
 ## What the bot can do today
 
 - Answer ENSIA IMPACT questions using RAG over indexed Telegram exports
