@@ -55,6 +55,8 @@ HF_TEMPERATURE = float(os.getenv("ENSIA_HF_TEMPERATURE", "0.2"))
 ALLOW_EXTRACTIVE_FALLBACK = os.getenv("ENSIA_ALLOW_EXTRACTIVE_FALLBACK", "1") == "1"
 GENERATION_MIN_TOP_SCORE = float(os.getenv("ENSIA_GENERATION_MIN_TOP_SCORE", "0.42"))
 GENERATION_MIN_AVG_SCORE = float(os.getenv("ENSIA_GENERATION_MIN_AVG_SCORE", "0.35"))
+ALLOW_GENERAL_FALLBACK = os.getenv("ENSIA_ALLOW_GENERAL_FALLBACK", "0") == "1"
+GENERAL_FALLBACK_SCOPE = os.getenv("ENSIA_GENERAL_FALLBACK_SCOPE", "low_or_empty").strip().lower()
 
 # Local/OpenAI-compatible endpoint backend (for Ollama/vLLM/local gateways)
 LOCAL_BASE_URL = os.getenv("ENSIA_LOCAL_BASE_URL", "http://127.0.0.1:11434")

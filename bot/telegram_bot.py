@@ -416,12 +416,27 @@ def _is_clear_smalltalk(text: str) -> bool:
 	return False
 
 
+def _looks_conversational(text: str) -> bool:
+	# Route common capability/identity chat prompts away from RAG retrieval.
+	patterns = [
+		r"\bwhat can you do\b",
+		r"\bwho are you\b",
+		r"\bwhat are you\b",
+		r"\bhow can you help\b",
+		r"\bqui es[- ]?tu\b",
+		r"\bcomment tu peux aider\b",
+		r"\bمن انت\b",
+		r"\bمن أنت\b",
+	]
+	return any(re.search(p, text) for p in patterns)
+
+
 def detect_intent(text: str) -> str:
 	norm = _normalize_text(text)
 	if is_ensia_query(norm):
 		return "ensia_query"
 
-	if _is_clear_smalltalk(norm):
+	if _is_clear_smalltalk(norm) or _looks_conversational(norm):
 		return "smalltalk"
 
 	# Route non-greeting messages to retrieval so they are handled by generation backend.
@@ -501,7 +516,8 @@ async def handle_message(update: Any, context: ContextTypes.DEFAULT_TYPE) -> Non
 	latency_ms = round((time.perf_counter() - started) * 1000, 2)
 
 	show_sources = get_sources_pref(user_id)
-	if show_sources and result["sources"]:
+	mode = str(result.get("mode") or "")
+	if show_sources and result["sources"] and "general" not in mode:
 		media_sources = _select_media_sources(result["sources"])
 		if media_sources:
 			top_sources = media_sources[:2]

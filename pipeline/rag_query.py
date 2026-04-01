@@ -23,6 +23,7 @@ if str(ROOT_DIR) not in sys.path:
 	sys.path.insert(0, str(ROOT_DIR))
 
 from config import (
+	ALLOW_GENERAL_FALLBACK,
 	ALLOW_EXTRACTIVE_FALLBACK,
 	COLLECTION_NAME,
 	EMBEDDING_MODEL,
@@ -37,6 +38,7 @@ from config import (
 	GENERATION_TIMEOUT_S,
 	GROQ_API_KEY,
 	GROQ_MODEL,
+	GENERAL_FALLBACK_SCOPE,
 	HF_BASE_MODEL,
 	HF_LORA_ADAPTER_DIR,
 	HF_MAX_NEW_TOKENS,
@@ -188,20 +190,28 @@ class RAGEngine:
 
 		return "\n".join(context_parts)
 
-	def _generate_with_gemini(self, query: str, chunks: list[RetrievedChunk]) -> str:
+	def _generate_with_gemini(self, query: str, chunks: list[RetrievedChunk], strict_grounding: bool = True) -> str:
 		if not GEMINI_API_KEY:
 			raise RuntimeError("GEMINI_API_KEY (or GOOGLE_API_KEY) is missing.")
 
 		context = self._build_context(chunks)
-		prompt = (
-			"You are a helpful assistant for ENSIA IMPACT community. "
-			"Answer ONLY using the provided context. "
-			"If the context is insufficient, say so clearly. "
-			"When you use information, cite sources like [Source 1].\n\n"
-			f"Question:\n{query}\n\n"
-			f"Context:\n{context}\n\n"
-			"Provide a concise answer in the same language as the question."
-		)
+		if strict_grounding:
+			prompt = (
+				"You are a helpful assistant for ENSIA IMPACT community. "
+				"Answer ONLY using the provided context. "
+				"If the context is insufficient, say so clearly. "
+				"When you use information, cite sources like [Source 1].\n\n"
+				f"Question:\n{query}\n\n"
+				f"Context:\n{context}\n\n"
+				"Provide a concise answer in the same language as the question."
+			)
+		else:
+			prompt = (
+				"You are a helpful assistant. "
+				"Answer with your general knowledge in the same language as the question. "
+				"If the user asks for ENSIA-specific facts and you are unsure, say that server context is insufficient.\n\n"
+				f"Question:\n{query}\n"
+			)
 
 		model_candidates = [GEMINI_MODEL]
 		for m in GEMINI_FALLBACK_MODELS.split(","):
@@ -281,7 +291,7 @@ class RAGEngine:
 			text = getattr(response, "text", "")
 			return text.strip() if text else "I could not generate an answer from the available context."
 
-	def _generate_with_groq(self, query: str, chunks: list[RetrievedChunk]) -> str:
+	def _generate_with_groq(self, query: str, chunks: list[RetrievedChunk], strict_grounding: bool = True) -> str:
 		if not GROQ_API_KEY:
 			raise RuntimeError("GROQ_API_KEY is missing.")
 
@@ -291,16 +301,25 @@ class RAGEngine:
 			raise RuntimeError("groq is required for the groq backend. Please install it with 'pip install groq'.") from err
 
 		context = self._build_context(chunks)
-		system_prompt = (
-			"You are a helpful assistant for ENSIA IMPACT community. "
-			"Answer ONLY using the provided context. "
-			"If the context is insufficient, say so clearly. "
-			"When you use information, cite sources like [Source 1]."
-		)
+		if strict_grounding:
+			system_prompt = (
+				"You are a helpful assistant for ENSIA IMPACT community. "
+				"Answer ONLY using the provided context. "
+				"If the context is insufficient, say so clearly. "
+				"When you use information, cite sources like [Source 1]."
+			)
+			user_content = f"Question:\n{query}\n\nContext:\n{context}"
+		else:
+			system_prompt = (
+				"You are a helpful assistant. "
+				"Answer with your general knowledge in the same language as the user. "
+				"If the user asks ENSIA-specific facts and you are unsure, clearly say context is insufficient."
+			)
+			user_content = query
 		
 		messages = [
 			{"role": "system", "content": system_prompt},
-			{"role": "user", "content": f"Question:\n{query}\n\nContext:\n{context}"},
+			{"role": "user", "content": user_content},
 		]
 
 		client = Groq(api_key=GROQ_API_KEY)
@@ -383,18 +402,27 @@ class RAGEngine:
 		self._hf_model = model
 		return tokenizer, model
 
-	def _generate_with_hf_lora(self, query: str, chunks: list[RetrievedChunk]) -> str:
+	def _generate_with_hf_lora(self, query: str, chunks: list[RetrievedChunk], strict_grounding: bool = True) -> str:
 		tokenizer, model = self._load_hf_lora_runtime()
 
 		context = self._build_context(chunks)
-		system_prompt = (
-			"You are a helpful assistant for ENSIA IMPACT community. "
-			"Answer only from provided context. If context is insufficient, say that clearly. "
-			"Cite sources like [Source 1] when relevant."
-		)
+		if strict_grounding:
+			system_prompt = (
+				"You are a helpful assistant for ENSIA IMPACT community. "
+				"Answer only from provided context. If context is insufficient, say that clearly. "
+				"Cite sources like [Source 1] when relevant."
+			)
+			user_content = f"Question:\n{query}\n\nContext:\n{context}"
+		else:
+			system_prompt = (
+				"You are a helpful assistant. "
+				"Answer with general knowledge in the same language as the user. "
+				"If ENSIA-specific facts are requested and you are unsure, say context is insufficient."
+			)
+			user_content = query
 		messages = [
 			{"role": "system", "content": system_prompt},
-			{"role": "user", "content": f"Question:\n{query}\n\nContext:\n{context}"},
+			{"role": "user", "content": user_content},
 		]
 
 		try:
@@ -436,19 +464,28 @@ class RAGEngine:
 		text = tokenizer.decode(gen_ids, skip_special_tokens=True).strip()
 		return text or "I could not generate an answer from the available context."
 
-	def _generate_with_local_endpoint(self, query: str, chunks: list[RetrievedChunk], model_name: str) -> str:
+	def _generate_with_local_endpoint(self, query: str, chunks: list[RetrievedChunk], model_name: str, strict_grounding: bool = True) -> str:
 		context = self._build_context(chunks)
-		system_prompt = (
-			"You are a helpful assistant for ENSIA IMPACT community. "
-			"Answer ONLY using the provided context. "
-			"If context is insufficient, clearly say that. "
-			"Cite sources like [Source 1]."
-		)
+		if strict_grounding:
+			system_prompt = (
+				"You are a helpful assistant for ENSIA IMPACT community. "
+				"Answer ONLY using the provided context. "
+				"If context is insufficient, clearly say that. "
+				"Cite sources like [Source 1]."
+			)
+			user_content = f"Question:\n{query}\n\nContext:\n{context}"
+		else:
+			system_prompt = (
+				"You are a helpful assistant. "
+				"Answer with general knowledge in the same language as the user. "
+				"If ENSIA-specific facts are requested and you are unsure, say context is insufficient."
+			)
+			user_content = query
 		payload = {
 			"model": model_name,
 			"messages": [
 				{"role": "system", "content": system_prompt},
-				{"role": "user", "content": f"Question:\n{query}\n\nContext:\n{context}"},
+				{"role": "user", "content": user_content},
 			],
 			"stream": False,
 			"options": {"temperature": HF_TEMPERATURE},
@@ -585,8 +622,47 @@ class RAGEngine:
 			msg = msg.replace(GROQ_API_KEY, "***")
 		return f"{err.__class__.__name__}: {msg}" if msg else err.__class__.__name__
 
+	def _general_fallback_enabled(self, has_chunks: bool, confident: bool) -> bool:
+		if not ALLOW_GENERAL_FALLBACK:
+			return False
+		scope = (GENERAL_FALLBACK_SCOPE or "low_or_empty").strip().lower()
+		if scope not in {"empty_only", "low_or_empty"}:
+			scope = "low_or_empty"
+		if not has_chunks:
+			return True
+		if scope == "low_or_empty" and not confident:
+			return True
+		return False
+
+	def _generate_general(self, backend: str, query: str) -> tuple[str, str, str | None]:
+		try:
+			if backend == "gemini":
+				return self._generate_with_gemini(query, [], strict_grounding=False), "gemini-general", None
+			if backend == "groq":
+				return self._generate_with_groq(query, [], strict_grounding=False), "groq-general", None
+			if backend == "hf_lora":
+				return self._generate_with_hf_lora(query, [], strict_grounding=False), "hf_lora-general", None
+			if backend == "local_model_1":
+				return self._generate_with_local_endpoint(query, [], LOCAL_MODEL_1, strict_grounding=False), "local_model_1-general", None
+			if backend == "local_model_2":
+				return self._generate_with_local_endpoint(query, [], LOCAL_MODEL_2, strict_grounding=False), "local_model_2-general", None
+		except Exception as err:
+			return (
+				"General generation fallback failed. Please retry or switch generation backend.",
+				"generation-error",
+				self._sanitize_error(err),
+			)
+		return (
+			"General generation fallback is unavailable for the selected backend.",
+			"generation-error",
+			"unsupported_general_backend",
+		)
+
 	def generate(self, query: str, chunks: list[RetrievedChunk]) -> tuple[str, str, str | None]:
+		backend = self._resolve_generation_backend()
 		if not chunks:
+			if self._general_fallback_enabled(has_chunks=False, confident=False):
+				return self._generate_general(backend, query)
 			return (
 				"I could not find relevant information in the indexed ENSIA IMPACT data. "
 				"Try rephrasing your question with keywords (topic, date, person, or resource type).",
@@ -594,9 +670,10 @@ class RAGEngine:
 				None,
 			)
 
-		backend = self._resolve_generation_backend()
 		confident, confidence_reason = self._has_confident_context(chunks)
 		if not confident:
+			if self._general_fallback_enabled(has_chunks=True, confident=False):
+				return self._generate_general(backend, query)
 			return (
 				"I found low-confidence context for this question, so I am not generating an answer to avoid misinformation. "
 				"Please rephrase with more specific keywords (person, date, event name, or exact phrase).",
@@ -617,31 +694,31 @@ class RAGEngine:
 
 		if backend == "gemini":
 			try:
-				return self._generate_with_gemini(query, chunks), "gemini", None
+				return self._generate_with_gemini(query, chunks, strict_grounding=True), "gemini", None
 			except Exception as err:
 				return finalize_failure(err)
 
 		if backend == "groq":
 			try:
-				return self._generate_with_groq(query, chunks), "groq", None
+				return self._generate_with_groq(query, chunks, strict_grounding=True), "groq", None
 			except Exception as err:
 				return finalize_failure(err)
 
 		if backend == "hf_lora":
 			try:
-				return self._generate_with_hf_lora(query, chunks), "hf_lora", None
+				return self._generate_with_hf_lora(query, chunks, strict_grounding=True), "hf_lora", None
 			except Exception as err:
 				return finalize_failure(err)
 
 		if backend == "local_model_1":
 			try:
-				return self._generate_with_local_endpoint(query, chunks, LOCAL_MODEL_1), "local_model_1", None
+				return self._generate_with_local_endpoint(query, chunks, LOCAL_MODEL_1, strict_grounding=True), "local_model_1", None
 			except Exception as err:
 				return finalize_failure(err)
 
 		if backend == "local_model_2":
 			try:
-				return self._generate_with_local_endpoint(query, chunks, LOCAL_MODEL_2), "local_model_2", None
+				return self._generate_with_local_endpoint(query, chunks, LOCAL_MODEL_2, strict_grounding=True), "local_model_2", None
 			except Exception as err:
 				return finalize_failure(err)
 
