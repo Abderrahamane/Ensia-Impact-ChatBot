@@ -155,6 +155,18 @@ Strict mode behavior:
   - `ENSIA_GENERATION_MIN_AVG_SCORE`
 - If confidence is low, the bot refuses generation and asks for a more specific query.
 
+Intent and reranking controls:
+
+- `ENSIA_INTENT_MIN_SCORE` (default `0.35`): hard ENSIA intent threshold before retrieval.
+- `ENSIA_RERANKER_ENABLED` (default `1`): enable cross-encoder reranking.
+- `ENSIA_RERANKER_MODEL` (default `cross-encoder/ms-marco-MiniLM-L-6-v2`).
+- `ENSIA_RERANK_CANDIDATES` (default `24`): max dense candidates passed to reranker.
+
+Retrieval quality safeguards:
+
+- Retrieved chunks are deduplicated by `message_id` before building context.
+- Grounded prompts include a hard guardrail: `Do not invent ENSIA-specific facts not in context.`
+
 ## Optional: Hugging Face LoRA generation backend
 
 After training and saving an adapter, you can run the bot with local HF generation:

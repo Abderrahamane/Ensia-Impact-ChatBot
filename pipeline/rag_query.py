@@ -6,6 +6,7 @@ import argparse
 import importlib
 import json
 import logging
+import math
 import os
 import re
 import sys
@@ -49,12 +50,23 @@ from config import (
 	LOCAL_MODEL_2,
 	RAG_MAX_CONTEXT_CHARS,
 	RAG_MIN_SIMILARITY,
+	RERANK_CANDIDATES,
+	RERANKER_ENABLED,
+	RERANKER_MODEL,
 	RAG_TOP_K,
 	VECTORSTORE_DIR,
 )
 
 
 logger = logging.getLogger(__name__)
+
+QUERY_TYPO_ALIASES = {
+	"parternship": "partnership",
+	"parternships": "partnerships",
+	"partership": "partnership",
+	"intership": "internship",
+	"interships": "internships",
+}
 
 
 @dataclass
@@ -83,11 +95,14 @@ class RAGEngine:
 		self.collection = self.client.get_collection(collection_name)
 		self._hf_tokenizer: Any | None = None
 		self._hf_model: Any | None = None
+		self._cross_encoder: Any | None = None
+		self._cross_encoder_disabled = not RERANKER_ENABLED
 
 	def retrieve(self, query: str, top_k: int | None = None) -> list[RetrievedChunk]:
 		k = top_k or self.top_k
-		pool_k = max(k, min(24, k * 4))
-		expanded_query = self._expand_query(query)
+		pool_k = max(k, min(RERANK_CANDIDATES, k * 4))
+		normalized_query = self._normalize_query_typos(query)
+		expanded_query = self._expand_query(normalized_query)
 		query_vec = self.model.encode([expanded_query]).tolist()
 		result = self.collection.query(
 			query_embeddings=query_vec,
@@ -103,17 +118,81 @@ class RAGEngine:
 		for doc, meta, dist in zip(docs, metas, distances):
 			score = 1 - float(dist)
 			if score >= self.min_similarity:
-				retrieved.append(RetrievedChunk(text=doc, score=score, metadata=meta or {}))
+				meta_obj = dict(meta or {})
+				meta_obj.setdefault("dense_score", score)
+				retrieved.append(RetrievedChunk(text=doc, score=score, metadata=meta_obj))
 
 		if not retrieved:
 			# Keep top candidates if strict threshold filters everything.
 			retrieved = [
-				RetrievedChunk(text=doc, score=1 - float(dist), metadata=meta or {})
-				for doc, meta, dist in zip(docs[:k], metas[:k], distances[:k])
+				RetrievedChunk(
+					text=doc,
+					score=1 - float(dist),
+					metadata={**(meta or {}), "dense_score": 1 - float(dist)},
+				)
+				for doc, meta, dist in zip(docs[:pool_k], metas[:pool_k], distances[:pool_k])
 			]
 
-		reranked = self._rerank_by_keyword_overlap(query, retrieved)
-		return reranked[:k]
+		keyword_reranked = self._rerank_by_keyword_overlap(query, retrieved)
+		cross_reranked = self._rerank_with_cross_encoder(query, keyword_reranked)
+		deduped = self._dedupe_by_message_id(cross_reranked)
+		return deduped[:k]
+
+	def _normalize_query_typos(self, query: str) -> str:
+		parts = re.findall(r"\w+|\W+", query)
+		normalized: list[str] = []
+		for part in parts:
+			if re.fullmatch(r"\w+", part):
+				normalized.append(QUERY_TYPO_ALIASES.get(part.lower(), part))
+			else:
+				normalized.append(part)
+		return "".join(normalized)
+
+	def _dedupe_by_message_id(self, chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
+		seen: set[str] = set()
+		deduped: list[RetrievedChunk] = []
+		for chunk in chunks:
+			msg_id = str(chunk.metadata.get("message_id", "")).strip()
+			if msg_id:
+				if msg_id in seen:
+					continue
+				seen.add(msg_id)
+			deduped.append(chunk)
+		return deduped
+
+	def _get_cross_encoder(self) -> Any | None:
+		if self._cross_encoder_disabled:
+			return None
+		if self._cross_encoder is not None:
+			return self._cross_encoder
+		try:
+			from sentence_transformers import CrossEncoder  # type: ignore
+
+			self._cross_encoder = CrossEncoder(RERANKER_MODEL)
+			return self._cross_encoder
+		except Exception as err:
+			self._cross_encoder_disabled = True
+			logger.warning("Cross-encoder reranker disabled: %s", err)
+			return None
+
+	def _rerank_with_cross_encoder(self, query: str, chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
+		reranker = self._get_cross_encoder()
+		if reranker is None or not chunks:
+			return chunks
+		pairs = [[query, c.text] for c in chunks]
+		try:
+			scores = reranker.predict(pairs)
+		except Exception as err:
+			logger.warning("Cross-encoder prediction failed; using keyword rerank: %s", err)
+			return chunks
+
+		reweighted: list[RetrievedChunk] = []
+		for chunk, ce_score in zip(chunks, scores):
+			ce_norm = 1.0 / (1.0 + math.exp(-float(ce_score)))
+			# Keep vector score dominant; cross-encoder acts as reranking signal.
+			blended = (0.75 * chunk.score) + (0.25 * ce_norm)
+			reweighted.append(RetrievedChunk(text=chunk.text, score=blended, metadata=chunk.metadata))
+		return sorted(reweighted, key=lambda c: c.score, reverse=True)
 
 	def _tokenize(self, text: str) -> set[str]:
 		return {w for w in re.findall(r"\w+", text.lower()) if len(w) > 2}
@@ -199,6 +278,7 @@ class RAGEngine:
 			prompt = (
 				"You are a helpful assistant for ENSIA IMPACT community. "
 				"Answer ONLY using the provided context. "
+				"Do not invent ENSIA-specific facts not in context. "
 				"If the context is insufficient, say so clearly. "
 				"When you use information, cite sources like [Source 1].\n\n"
 				f"Question:\n{query}\n\n"
@@ -305,6 +385,7 @@ class RAGEngine:
 			system_prompt = (
 				"You are a helpful assistant for ENSIA IMPACT community. "
 				"Answer ONLY using the provided context. "
+				"Do not invent ENSIA-specific facts not in context. "
 				"If the context is insufficient, say so clearly. "
 				"When you use information, cite sources like [Source 1]."
 			)
@@ -410,6 +491,7 @@ class RAGEngine:
 			system_prompt = (
 				"You are a helpful assistant for ENSIA IMPACT community. "
 				"Answer only from provided context. If context is insufficient, say that clearly. "
+				"Do not invent ENSIA-specific facts not in context. "
 				"Cite sources like [Source 1] when relevant."
 			)
 			user_content = f"Question:\n{query}\n\nContext:\n{context}"
@@ -470,6 +552,7 @@ class RAGEngine:
 			system_prompt = (
 				"You are a helpful assistant for ENSIA IMPACT community. "
 				"Answer ONLY using the provided context. "
+				"Do not invent ENSIA-specific facts not in context. "
 				"If context is insufficient, clearly say that. "
 				"Cite sources like [Source 1]."
 			)
@@ -606,12 +689,17 @@ class RAGEngine:
 	def _has_confident_context(self, chunks: list[RetrievedChunk]) -> tuple[bool, str | None]:
 		if not chunks:
 			return False, "no_chunks"
-		top_score = max(c.score for c in chunks)
-		avg_score = sum(c.score for c in chunks) / len(chunks)
+		ranked_scores = sorted(
+			max(float(c.score), float(c.metadata.get("dense_score", c.score))) for c in chunks
+		)
+		ranked_scores.reverse()
+		top_score = ranked_scores[0]
+		effective_n = min(3, len(ranked_scores))
+		avg_score = sum(ranked_scores[:effective_n]) / effective_n
 		if top_score < GENERATION_MIN_TOP_SCORE:
 			return False, f"top_score={top_score:.3f} < min_top={GENERATION_MIN_TOP_SCORE:.3f}"
 		if avg_score < GENERATION_MIN_AVG_SCORE:
-			return False, f"avg_score={avg_score:.3f} < min_avg={GENERATION_MIN_AVG_SCORE:.3f}"
+			return False, f"top{effective_n}_avg={avg_score:.3f} < min_avg={GENERATION_MIN_AVG_SCORE:.3f}"
 		return True, None
 
 	def _sanitize_error(self, err: Exception) -> str:

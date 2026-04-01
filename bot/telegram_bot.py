@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import difflib
 import json
 import logging
 import os
@@ -29,6 +30,7 @@ from config import (
 	GENERATION_BACKEND,
 	FEEDBACK_PATH,
 	GEMINI_API_KEY,
+	INTENT_MIN_SCORE,
 	LOG_DIR,
 	LOG_LEVEL,
 	PROCESSED_DIR,
@@ -115,6 +117,16 @@ ENSIA_KEYWORDS = {
 	"startup", "startups", "internship", "stage", "opportunit", "job", "emploi", "resource", "ressource",
 	"companies", "entreprise", "events", "hackathon", "scientific", "research", "consulting", "freelance",
 	"براءة", "شراكة", "شركة", "شركات", "تربص", "تدريب", "فرص", "حاضنة", "مشروع", "تخرج",
+}
+
+TYPO_ALIASES = {
+	"parternship": "partnership",
+	"parternships": "partnerships",
+	"partership": "partnership",
+	"partenrship": "partnership",
+	"intership": "internship",
+	"interships": "internships",
+	"opportunites": "opportunities",
 }
 
 
@@ -359,6 +371,24 @@ def _tokenize_for_intent(text: str) -> set[str]:
 	return {tok for tok in re.findall(r"\w+", text.lower()) if tok}
 
 
+def _normalize_intent_tokens(tokens: set[str]) -> set[str]:
+	normalized: set[str] = set()
+	for tok in tokens:
+		normalized.add(TYPO_ALIASES.get(tok, tok))
+	return normalized
+
+
+def _fuzzy_token_match(key: str, tokens: set[str]) -> bool:
+	if len(key) < 5:
+		return False
+	for tok in tokens:
+		if abs(len(tok) - len(key)) > 3:
+			continue
+		if difflib.SequenceMatcher(None, key, tok).ratio() >= 0.84:
+			return True
+	return False
+
+
 def _media_source_label(src: dict[str, Any]) -> str | None:
 	content_type = (src.get("content_type") or "").strip().lower()
 	file_name = (src.get("file_name") or "").strip().lower()
@@ -378,23 +408,50 @@ def _select_media_sources(sources: list[dict[str, Any]]) -> list[tuple[dict[str,
 	return selected
 
 
-def is_ensia_query(text: str) -> bool:
+def ensia_intent_score(text: str) -> float:
 	norm = _normalize_text(text)
-	tokens = _tokenize_for_intent(norm)
+	tokens = _normalize_intent_tokens(_tokenize_for_intent(norm))
+	if not tokens:
+		return 0.0
+
+	score = 0.0
+	hits = 0
 	for keyword in ENSIA_KEYWORDS:
 		key = keyword.lower().strip()
 		if not key:
 			continue
 		if " " in key:
 			if key in norm:
-				return True
+				hits += 1
 			continue
 		if key in tokens:
-			return True
+			hits += 1
+			continue
 		# Keep prefix support for stems like "opportunit" used in keyword set.
 		if any(tok.startswith(key) for tok in tokens):
-			return True
-	return False
+			hits += 1
+			continue
+		if _fuzzy_token_match(key, tokens):
+			hits += 1
+
+	if hits:
+		score += min(0.84, 0.24 * hits)
+		score += 0.12
+
+	if "ensia" in tokens or "impact" in tokens:
+		score += 0.2
+
+	query_markers = {"what", "where", "which", "who", "how", "when", "current", "latest", "find", "search", "show", "tell"}
+	if tokens.intersection(query_markers):
+		score += 0.05
+
+	if _looks_conversational(norm) and hits == 0:
+		score = max(0.0, score - 0.35)
+
+	if _is_clear_smalltalk(norm) and hits == 0:
+		return 0.0
+
+	return min(1.0, score)
 
 
 def _is_clear_smalltalk(text: str) -> bool:
@@ -433,14 +490,13 @@ def _looks_conversational(text: str) -> bool:
 
 def detect_intent(text: str) -> str:
 	norm = _normalize_text(text)
-	if is_ensia_query(norm):
-		return "ensia_query"
-
 	if _is_clear_smalltalk(norm) or _looks_conversational(norm):
 		return "smalltalk"
 
-	# Route non-greeting messages to retrieval so they are handled by generation backend.
-	return "ensia_query"
+	if ensia_intent_score(norm) >= INTENT_MIN_SCORE:
+		return "ensia_query"
+
+	return "smalltalk"
 
 
 def build_smalltalk_reply(text: str) -> str:
@@ -484,6 +540,7 @@ async def handle_message(update: Any, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 	question = update.message.text.strip()
 	intent = detect_intent(question)
+	intent_score = round(ensia_intent_score(question), 3)
 
 	if intent == "smalltalk":
 		reply = build_smalltalk_reply(question)
@@ -491,7 +548,7 @@ async def handle_message(update: Any, context: ContextTypes.DEFAULT_TYPE) -> Non
 			"bot_smalltalk_ok",
 			extra={
 				"event": "bot_smalltalk_ok",
-				"meta": {"user_id": user_id, "intent": intent, "text_len": len(question)},
+				"meta": {"user_id": user_id, "intent": intent, "intent_score": intent_score, "text_len": len(question)},
 			},
 		)
 		await update.message.reply_text(reply)
@@ -536,6 +593,7 @@ async def handle_message(update: Any, context: ContextTypes.DEFAULT_TYPE) -> Non
 			"event": "bot_query_ok",
 			"meta": {
 				"user_id": user_id,
+				"intent_score": intent_score,
 				"mode": result.get("mode"),
 				"generation_error": result.get("generation_error"),
 				"latency_ms": latency_ms,
