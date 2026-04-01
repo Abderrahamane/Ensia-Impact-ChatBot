@@ -359,6 +359,25 @@ def _tokenize_for_intent(text: str) -> set[str]:
 	return {tok for tok in re.findall(r"\w+", text.lower()) if tok}
 
 
+def _media_source_label(src: dict[str, Any]) -> str | None:
+	content_type = (src.get("content_type") or "").strip().lower()
+	file_name = (src.get("file_name") or "").strip().lower()
+	if content_type == "photo":
+		return "image"
+	if content_type == "file" and file_name.endswith(".pdf"):
+		return "pdf"
+	return None
+
+
+def _select_media_sources(sources: list[dict[str, Any]]) -> list[tuple[dict[str, Any], str]]:
+	selected: list[tuple[dict[str, Any], str]] = []
+	for src in sources:
+		label = _media_source_label(src)
+		if label:
+			selected.append((src, label))
+	return selected
+
+
 def is_ensia_query(text: str) -> bool:
 	norm = _normalize_text(text)
 	tokens = _tokenize_for_intent(norm)
@@ -483,16 +502,17 @@ async def handle_message(update: Any, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 	show_sources = get_sources_pref(user_id)
 	if show_sources and result["sources"]:
-		top_sources = result["sources"][:2]
-		lines = ["\n\nSources:"]
-		for src in top_sources:
-			kind = src.get("content_type", "")
-			file_name = src.get("file_name", "")
-			detail = f" | {kind}" if kind else ""
-			if file_name:
-				detail += f" ({file_name})"
-			lines.append(f"- {src['date']} | {src['from']} | msg {src['message_id']}{detail}")
-		answer += "\n" + "\n".join(lines)
+		media_sources = _select_media_sources(result["sources"])
+		if media_sources:
+			top_sources = media_sources[:2]
+			lines = ["\n\nSources:"]
+			for src, label in top_sources:
+				file_name = src.get("file_name", "")
+				detail = f" | {label}"
+				if file_name:
+					detail += f" ({file_name})"
+				lines.append(f"- {src['date']} | {src['from']} | msg {src['message_id']}{detail}")
+			answer += "\n" + "\n".join(lines)
 
 	logging.info(
 		"bot_query_ok",

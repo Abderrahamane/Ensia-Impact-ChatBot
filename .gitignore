@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+.venv/
+venv/
+
+# Environment secrets
+.env
+.env.*
+
+# Local logs/runtime
+logs/
+*.log
+*.pid
+
+# Local data artifacts (large/generated)
+data/vectorstore/
+data/processed/
+backups/
+artifacts/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
