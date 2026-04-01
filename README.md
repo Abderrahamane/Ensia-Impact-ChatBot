@@ -19,9 +19,13 @@ RAG-powered chatbot over Telegram-exported ENSIA IMPACT content.
   - photos/images (OCR text)
 - Show grounded sources with message references (`date`, `from`, `message_id`)
 - In bot replies, media source lines now include a human-readable topic preview (from file name or OCR/text preview) instead of only raw message IDs
+- Source lines include trust labels (`high`/`medium`) and first available deep-link URL when present
 - Route message intent in `bot/telegram_bot.py`:
   - `smalltalk` (greetings/general chat) -> natural conversational response (no retrieval)
   - `ensia_query` (ENSIA-related) -> full RAG answer + optional sources
+- UX transparency commands:
+  - `/why` explains why last answer was chosen (intent, top entities, top source)
+  - `/mode` shows current backend, reranker models, and confidence thresholds
 
 ## Important current behavior
 
@@ -29,6 +33,7 @@ RAG-powered chatbot over Telegram-exported ENSIA IMPACT content.
 - If your message is conversational (example: "hi", "how are you", "who are you"), the bot replies normally without querying ENSIA index.
 - If your message looks ENSIA-related (internships, partnerships, incubator, FYP, events, etc.), the bot runs RAG and can attach sources depending on your `/sources` preference.
 - This avoids irrelevant retrieval answers for pure chat while keeping ENSIA answers grounded.
+- Bot replies are polished to match user language style (Arabic/French/English headers and smalltalk tone).
 
 ## Phase 1 quick wins (implemented)
 

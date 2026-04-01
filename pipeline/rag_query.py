@@ -1233,12 +1233,22 @@ class RAGEngine:
 		answer, mode, generation_error = self.generate(query, chunks)
 		intent_type = self._query_intent_type(query)
 		needs_clarification = mode == "needs-clarification"
+		entities = self._extract_entities(query)
+		top_entities = sorted(set().union(*entities.values()))[:8]
+		top_source = chunks[0] if chunks else None
 		return {
 			"query": query,
 			"answer": answer,
 			"mode": mode,
 			"intent_type": intent_type,
 			"needs_clarification": needs_clarification,
+			"top_entities": top_entities,
+			"top_source": {
+				"date": top_source.metadata.get("date", "") if top_source else "",
+				"from": top_source.metadata.get("from", "") if top_source else "",
+				"message_id": top_source.metadata.get("message_id", "") if top_source else "",
+				"trust": self._source_trust_label(query, top_source) if top_source else "",
+			} if top_source else {},
 			"generation_error": generation_error,
 			"sources": [
 				{
@@ -1249,6 +1259,7 @@ class RAGEngine:
 					"message_id": c.metadata.get("message_id", ""),
 					"content_type": c.metadata.get("content_type", ""),
 					"file_name": c.metadata.get("file_name", ""),
+					"links": c.metadata.get("links", ""),
 					"text_preview": c.text[:220],
 				}
 				for c in chunks

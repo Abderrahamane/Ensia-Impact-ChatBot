@@ -38,6 +38,14 @@ from config import (
 	INTENT_MIN_SCORE,
 	LOG_DIR,
 	LOG_LEVEL,
+	RERANKER_MODEL,
+	RERANKER_MULTILINGUAL_MODEL,
+	GENERATION_MIN_TOP_SCORE,
+	GENERATION_MIN_AVG_SCORE,
+	CONF_PARTNERSHIP_TOP,
+	CONF_PARTNERSHIP_AVG,
+	CONF_EVENT_TOP,
+	CONF_EVENT_AVG,
 	PROCESSED_DIR,
 	GROQ_API_KEY,
 	SOURCES_DEFAULT_ON,
@@ -270,11 +278,83 @@ async def help_command(update: Any, context: ContextTypes.DEFAULT_TYPE) -> None:
 		"Example: 'Where can I find internship opportunities in AI?'\n\n"
 		"Commands:\n"
 		"/sources on|off - show or hide sources\n"
+		"/why - explain why last answer was chosen\n"
+		"/mode - show backend/reranker/confidence settings\n"
 		"/feedback <text> - send feedback\n"
 		"/admins - check your admin status\n"
 		"/health - admin health check\n"
 		"/stats - admin runtime stats\n"
 		"/backup_now [dry] - admin backup trigger"
+	)
+
+
+def _detect_language(text: str, user_lang_code: str | None = None) -> str:
+	if any("\u0600" <= ch <= "\u06ff" for ch in text):
+		return "ar"
+	t = text.lower()
+	if any(x in t for x in ["bonjour", "salut", "merci", "stage", "partenariat"]):
+		return "fr"
+	if user_lang_code:
+		if user_lang_code.startswith("ar"):
+			return "ar"
+		if user_lang_code.startswith("fr"):
+			return "fr"
+	return "en"
+
+
+def _localize_headers(answer: str, lang: str) -> str:
+	if lang == "fr":
+		answer = answer.replace("Direct answer:", "Reponse directe :")
+		answer = answer.replace("Key points:", "Points cles :")
+		answer = answer.replace("If unsure:", "Si incertain :")
+	elif lang == "ar":
+		answer = answer.replace("Direct answer:", "الاجابة المباشرة:")
+		answer = answer.replace("Key points:", "النقاط الرئيسية:")
+		answer = answer.replace("If unsure:", "عند عدم اليقين:")
+	return answer
+
+
+def _extract_first_link(src: dict[str, Any]) -> str:
+	links_raw = str(src.get("links") or "").strip()
+	if not links_raw:
+		return ""
+	for part in links_raw.split("|"):
+		cand = part.strip()
+		if cand.startswith("http://") or cand.startswith("https://"):
+			return cand
+	return ""
+
+
+async def why_command(update: Any, context: ContextTypes.DEFAULT_TYPE) -> None:
+	if not update.message or not update.effective_user:
+		return
+	snap = last_answer_snapshot.get(update.effective_user.id)
+	if not snap:
+		await update.message.reply_text("No recent answer to explain yet. Ask a question first.")
+		return
+	entities = snap.get("top_entities") or []
+	entity_txt = ", ".join(entities[:5]) if entities else "none"
+	top = snap.get("top_source") or {}
+	top_src = f"{top.get('date','')} | {top.get('from','')} | msg {top.get('message_id','')} | trust={top.get('trust','')}"
+	await update.message.reply_text(
+		"Why this answer:\n"
+		f"- intent: {snap.get('intent_type', 'unknown')}\n"
+		f"- top entities: {entity_txt}\n"
+		f"- top source: {top_src}"
+	)
+
+
+async def mode_command(update: Any, context: ContextTypes.DEFAULT_TYPE) -> None:
+	if not update.message:
+		return
+	await update.message.reply_text(
+		"Runtime mode:\n"
+		f"- backend: {GENERATION_BACKEND}\n"
+		f"- reranker_primary: {RERANKER_MODEL}\n"
+		f"- reranker_fallback: {RERANKER_MULTILINGUAL_MODEL}\n"
+		f"- conf_general: top={GENERATION_MIN_TOP_SCORE} avg={GENERATION_MIN_AVG_SCORE}\n"
+		f"- conf_partnership: top={CONF_PARTNERSHIP_TOP} avg={CONF_PARTNERSHIP_AVG}\n"
+		f"- conf_event: top={CONF_EVENT_TOP} avg={CONF_EVENT_AVG}"
 	)
 
 
@@ -570,8 +650,12 @@ def detect_intent(text: str) -> str:
 	return "smalltalk"
 
 
-def build_smalltalk_reply(text: str) -> str:
+def build_smalltalk_reply(text: str, lang: str = "en") -> str:
 	norm = _normalize_text(text)
+	if lang == "fr":
+		return "Salut ! Je peux discuter avec toi et aussi repondre aux questions ENSIA IMPACT (stages, partenariats, incubateur, evenements)."
+	if lang == "ar":
+		return "مرحبا! يمكنني الدردشة معك، وايضا الاجابة عن اسئلة ENSIA IMPACT حول التربصات، الشراكات، الحاضنة، والاحداث."
 	if any(k in norm for k in ["how are you", "ca va", "comment ca va", "كيف حالك"]):
 		return (
 			"I am doing great, thanks for asking. "
@@ -610,6 +694,7 @@ async def handle_message(update: Any, context: ContextTypes.DEFAULT_TYPE) -> Non
 		return
 
 	question = update.message.text.strip()
+	lang = _detect_language(question, getattr(update.effective_user, "language_code", None))
 	if user_id in pending_clarifications:
 		base_q = pending_clarifications.pop(user_id)
 		question = f"{base_q}\nClarification from user: {question}"
@@ -617,7 +702,7 @@ async def handle_message(update: Any, context: ContextTypes.DEFAULT_TYPE) -> Non
 	intent_score = round(ensia_intent_score(question), 3)
 
 	if intent == "smalltalk":
-		reply = build_smalltalk_reply(question)
+		reply = build_smalltalk_reply(question, lang=lang)
 		logging.info(
 			"bot_smalltalk_ok",
 			extra={
@@ -644,10 +729,13 @@ async def handle_message(update: Any, context: ContextTypes.DEFAULT_TYPE) -> Non
 		return
 
 	answer = result["answer"]
+	answer = _localize_headers(answer, lang)
 	last_answer_snapshot[user_id] = {
 		"query": update.message.text.strip(),
 		"mode": result.get("mode"),
 		"intent_type": result.get("intent_type"),
+		"top_entities": result.get("top_entities", []),
+		"top_source": result.get("top_source", {}),
 		"needs_clarification": result.get("needs_clarification"),
 		"sources": result.get("sources", [])[:5],
 		"generation_error": result.get("generation_error"),
@@ -666,8 +754,10 @@ async def handle_message(update: Any, context: ContextTypes.DEFAULT_TYPE) -> Non
 			for src, label in top_sources:
 				topic = _clean_source_preview(src)
 				trust = (src.get("trust") or "medium").lower()
+				link = _extract_first_link(src)
+				link_part = f" | link: {link}" if link else ""
 				lines.append(
-					f"- {src['date']} | {src['from']} | {label} | trust={trust} | {topic} (msg {src['message_id']})"
+					f"- {src['date']} | {src['from']} | {label} | trust={trust} | {topic} (msg {src['message_id']}){link_part}"
 				)
 			answer += "\n" + "\n".join(lines)
 
@@ -704,6 +794,8 @@ def main() -> None:
 	load_user_prefs()
 	application.add_handler(CommandHandler("start", start))
 	application.add_handler(CommandHandler("help", help_command))
+	application.add_handler(CommandHandler("why", why_command))
+	application.add_handler(CommandHandler("mode", mode_command))
 	application.add_handler(CommandHandler("admins", admins_command))
 	application.add_handler(CommandHandler("health", health_command))
 	application.add_handler(CommandHandler("stats", stats_command))
