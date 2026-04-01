@@ -1,0 +1,84 @@
+{
+  "total_kept": 409,
+  "total_skipped": 841,
+  "by_type": {
+    "text": 133,
+    "link": 129,
+    "photo": 135,
+    "file": 12
+  },
+  "top_senders": {
+    "ENSIA IMPACT © Group": 267,
+    "Sami Belkacem": 85,
+    "Wahid Chami ENSIA": 17,
+    "Hadil Lafrid": 5,
+    "Abdussamad": 4,
+    "Younes Ahmane": 2,
+    "Safia Tifour": 2,
+    "Zahra Ab": 2,
+    "Soundous Chemam": 2,
+    "عَبْدُ ٱلرَّحْمَٰنِ": 2
+  },
+  "top_reacted": [
+    {
+      "id": 976,
+      "date": "2025-06-06",
+      "reactions": 87,
+      "preview": "Aidkoum Moubarak to the ENSIA Impact community 🎊 🐑 تقبل الله منا ومنكم صالح الأعمال"
+    },
+    {
+      "id": 1408,
+      "date": "2026-03-20",
+      "reactions": 77,
+      "preview": "عيدكم مبارك لكل أعضاء ENSIA Impact community 🎉\nتقبل الله منا ومنكم الصيام والقيام وصالح الأعمال، وجعلكم الله ذخرًا لهذه "
+    },
+    {
+      "id": 1350,
+      "date": "2026-02-06",
+      "reactions": 63,
+      "preview": "طالب من المدرسة يودّ أن يشارك قراءته الكاملة لسورة الكهف كصدقة جارية.\nجمعة مباركة للجميع https://youtu.be/u71jLyG-XQI?si"
+    },
+    {
+      "id": 1184,
+      "date": "2025-10-28",
+      "reactions": 60,
+      "preview": "🎨 Welcome to Students Art & Services! 💫\n\nSalam everyone,\n\nThis channel is created for our school community to share and "
+    },
+    {
+      "id": 4,
+      "date": "2024-09-21",
+      "reactions": 58,
+      "preview": "Welcome to all those who believe in themselves to change the world"
+    },
+    {
+      "id": 1272,
+      "date": "2025-11-29",
+      "reactions": 52,
+      "preview": "We're happy to share that Djamel Delivery made a great impression on the jury during today’s Pitch Day and received seve"
+    },
+    {
+      "id": 869,
+      "date": "2025-03-31",
+      "reactions": 48,
+      "preview": "عيدكم مبارك، تقبل الله منا ومنكم صالح الأعمال.\nأسأل الله أن يجعلكم كل عام ذخرًا لأمتنا ونفعًا لأهل بلدكم، وأن يوفقكم لما"
+    },
+    {
+      "id": 1213,
+      "date": "2025-11-12",
+      "reactions": 43,
+      "preview": "The partnership with Ooredoo was officially formalized today.\n\nHere is the updated list of partnerships in progress with"
+    },
+    {
+      "id": 977,
+      "date": "2025-06-07",
+      "reactions": 40,
+      "preview": "عيدكم مبارك جميعا. شكرا سامي على الجهود المبذولة."
+    },
+    {
+      "id": 1162,
+      "date": "2025-10-26",
+      "reactions": 40,
+      "preview": "Salam everyone,\n\nI discussed with @Abdlha9K , and in fact, he has created a script to scrape data from OuedKniss through"
+    }
+  ]
+}

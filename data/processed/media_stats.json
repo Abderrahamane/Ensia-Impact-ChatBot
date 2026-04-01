@@ -1,0 +1,10 @@
+{
+  "total_messages": 409,
+  "processed_media_messages": 147,
+  "pdf_extracted": 10,
+  "image_extracted": 131,
+  "missing_tesseract": 0,
+  "missing_dependency": 0,
+  "unsupported_or_empty": 6,
+  "errors": 0
+}

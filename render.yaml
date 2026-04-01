@@ -1,0 +1,17 @@
+services:
+  - type: worker
+    name: ensia-impact-bot
+    env: docker
+    plan: starter
+    autoDeploy: true
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: ENSIA_GENERATION_BACKEND
+        value: extractive
+      - key: ENSIA_RAG_TOP_K
+        value: "5"
+      - key: ENSIA_BOT_COOLDOWN_SECONDS
+        value: "3"
+      - key: ENSIA_BOT_RATE_LIMIT_PER_MINUTE
+        value: "8"
+

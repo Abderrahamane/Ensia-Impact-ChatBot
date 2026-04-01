@@ -1,0 +1,16 @@
+[Unit]
+Description=ENSIA IMPACT Telegram Bot
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/ensia-impact-bot
+EnvironmentFile=/opt/ensia-impact-bot/.env
+ExecStart=/opt/ensia-impact-bot/.venv/bin/python bot/telegram_bot.py
+Restart=always
+RestartSec=5
+User=ubuntu
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,0 +1,147 @@
+[
+  {
+    "id": "en_01",
+    "language": "en",
+    "query": "Where can I find internship opportunities in AI?",
+    "expected_any": ["internship", "opportunit", "ai", "stage"]
+  },
+  {
+    "id": "en_02",
+    "language": "en",
+    "query": "Is there a platform for jobs and internships shared by ENSIA IMPACT?",
+    "expected_any": ["platform", "job", "internship", "ensia", "internships.ensia.edu.dz"]
+  },
+  {
+    "id": "en_03",
+    "language": "en",
+    "query": "Any company list for students looking for AI or data science internships?",
+    "expected_any": ["company", "companies", "ai", "data", "spreadsheet"]
+  },
+  {
+    "id": "en_04",
+    "language": "en",
+    "query": "How do students apply for opportunities announced in the group?",
+    "expected_any": ["apply", "opportunit", "account", "platform", "link"]
+  },
+  {
+    "id": "en_05",
+    "language": "en",
+    "query": "What content is posted in the Companies Jobs Internships topic?",
+    "expected_any": ["companies", "jobs", "internships", "opportunit"]
+  },
+  {
+    "id": "en_06",
+    "language": "en",
+    "query": "Do we have announcements about summer internships?",
+    "expected_any": ["summer", "internship", "offers", "job"]
+  },
+  {
+    "id": "fr_01",
+    "language": "fr",
+    "query": "Ou puis-je trouver des offres de stage en IA ?",
+    "expected_any": ["stage", "offre", "ia", "internship", "opportunit"]
+  },
+  {
+    "id": "fr_02",
+    "language": "fr",
+    "query": "Y a-t-il des ressources partagees pour les PFE ?",
+    "expected_any": ["pfe", "fyp", "final year", "project", "ressource"]
+  },
+  {
+    "id": "fr_03",
+    "language": "fr",
+    "query": "Quels messages parlent des evenements ou hackathons ?",
+    "expected_any": ["event", "hackathon", "competition", "evenement"]
+  },
+  {
+    "id": "fr_04",
+    "language": "fr",
+    "query": "Existe-t-il des liens utiles partages par ENSIA IMPACT ?",
+    "expected_any": ["link", "http", "docs.google", "plateform", "resource"]
+  },
+  {
+    "id": "fr_05",
+    "language": "fr",
+    "query": "Avez-vous des publications sur l'entrepreneuriat et les startups ?",
+    "expected_any": ["startup", "entrepreneur", "incubator", "projet"]
+  },
+  {
+    "id": "fr_06",
+    "language": "fr",
+    "query": "Comment suivre les opportunites d'emploi pour les etudiants ?",
+    "expected_any": ["emploi", "job", "opportunit", "students", "platform"]
+  },
+  {
+    "id": "ar_01",
+    "language": "ar",
+    "query": "وين نلقى فرص تدريب في الذكاء الاصطناعي؟",
+    "expected_any": ["تدريب", "فرص", "internship", "ai", "opportunit"]
+  },
+  {
+    "id": "ar_02",
+    "language": "ar",
+    "query": "هل كاين منصات فيها عروض ستاج ولا خدمة؟",
+    "expected_any": ["منصة", "platform", "job", "internship", "offers"]
+  },
+  {
+    "id": "ar_03",
+    "language": "ar",
+    "query": "اعطيني معلومات على الشركات اللي توفر تربصات.",
+    "expected_any": ["companies", "الشركات", "internship", "stage", "ai"]
+  },
+  {
+    "id": "ar_04",
+    "language": "ar",
+    "query": "هل كاين منشورات على الهاكاثون والايفنتات؟",
+    "expected_any": ["hackathon", "event", "events", "competition", "opportunit"]
+  },
+  {
+    "id": "ar_05",
+    "language": "ar",
+    "query": "كيفاش نلقى روابط الموارد اللي يبارتاجيوهم في القروب؟",
+    "expected_any": ["links", "http", "docs.google", "resource", "الرابط"]
+  },
+  {
+    "id": "ar_06",
+    "language": "ar",
+    "query": "وش كاين معلومات على مشاريع التخرج PFE ؟",
+    "expected_any": ["pfe", "fyp", "final year", "project", "مشروع"]
+  },
+  {
+    "id": "mix_01",
+    "language": "mix",
+    "query": "internship opportunities Algerie ENSIA IMPACT",
+    "expected_any": ["internship", "opportunit", "ensia", "algeria", "platform"]
+  },
+  {
+    "id": "mix_02",
+    "language": "mix",
+    "query": "stage IA data science entreprises ENSIA",
+    "expected_any": ["stage", "ai", "data", "companies", "ensia"]
+  },
+  {
+    "id": "mix_03",
+    "language": "mix",
+    "query": "opportunites startups incubator entrepreneurship",
+    "expected_any": ["startup", "incubator", "entrepreneur", "project", "opportunit"]
+  },
+  {
+    "id": "mix_04",
+    "language": "mix",
+    "query": "Q&A resources links shared in ENSIA IMPACT group",
+    "expected_any": ["q&a", "resource", "links", "group", "docs.google"]
+  },
+  {
+    "id": "mix_05",
+    "language": "mix",
+    "query": "scientific research opportunities students",
+    "expected_any": ["research", "scientific", "opportunit", "students", "project"]
+  },
+  {
+    "id": "mix_06",
+    "language": "mix",
+    "query": "freelance consulting projects students art services",
+    "expected_any": ["freelance", "consulting", "project", "services", "students"]
+  }
+]
+
