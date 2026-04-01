@@ -132,6 +132,7 @@ pending_clarifications: dict[int, str] = {}
 last_answer_snapshot: dict[int, dict[str, Any]] = {}
 response_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 feedback_profile: dict[str, dict[str, int]] = {}
+EVAL_REPORT_PATH = ROOT_DIR / "tests" / "eval_rag_report.json"
 
 SMALLTALK_KEYWORDS = {
 	"en": {"hi", "hello", "hey", "how are you", "who are you", "what are you", "thanks", "thank you", "bye", "good morning", "good evening"},
@@ -392,6 +393,7 @@ async def help_command(update: Any, context: ContextTypes.DEFAULT_TYPE) -> None:
 		"/mode - show backend/reranker/confidence settings\n"
 		"/feedback <text> - send feedback\n"
 		"/feedback_stats - admin feedback counters\n"
+		"/quality - admin quality dashboard\n"
 		"/admins - check your admin status\n"
 		"/health - admin health check\n"
 		"/stats - admin runtime stats\n"
@@ -412,6 +414,7 @@ async def commands_command(update: Any, context: ContextTypes.DEFAULT_TYPE) -> N
 		"/why - explain why the last answer was chosen\n"
 		"/mode - show backend, reranker, and thresholds\n"
 		"/feedback <text> - save textual feedback\n"
+		"/quality - admin quality dashboard\n"
 		"/admins - check admin status\n"
 		"/health - admin runtime health\n"
 		"/stats - admin runtime/data stats\n"
@@ -439,6 +442,88 @@ async def feedback_stats_command(update: Any, context: ContextTypes.DEFAULT_TYPE
 		wrong = int(counters.get("wrong", 0))
 		correct = int(counters.get("correct", 0))
 		lines.append(f"- wrong={wrong} | correct={correct} | {query_key[:90]}")
+	await update.message.reply_text("\n".join(lines))
+
+
+def _compute_recent_feedback(window_days: int = 7) -> dict[str, Any]:
+	if not FEEDBACK_PATH.exists():
+		return {"wrong": 0, "correct": 0, "ratio": "n/a", "top_failed": []}
+
+	now = datetime.now(UTC)
+	wrong = 0
+	correct = 0
+	failed_counter: dict[str, int] = defaultdict(int)
+
+	for line in FEEDBACK_PATH.read_text(encoding="utf-8").splitlines():
+		line = line.strip()
+		if not line:
+			continue
+		try:
+			rec = json.loads(line)
+		except Exception:
+			continue
+		ts_raw = str(rec.get("timestamp") or "")
+		try:
+			ts = datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
+		except Exception:
+			continue
+		if (now - ts).days > window_days:
+			continue
+		text = str(rec.get("text") or "")
+		snap = rec.get("snapshot") or {}
+		q = _normalize_query_key(str(snap.get("query") or ""))
+		if text == "wrong_answer_button":
+			wrong += 1
+			if q:
+				failed_counter[q] += 1
+		elif text == "correct_answer_button":
+			correct += 1
+
+	ratio = "n/a" if correct == 0 else f"{(wrong / max(1, correct)):.2f}"
+	top_failed = sorted(failed_counter.items(), key=lambda kv: kv[1], reverse=True)[:5]
+	return {"wrong": wrong, "correct": correct, "ratio": ratio, "top_failed": top_failed}
+
+
+def _load_last_eval_status() -> dict[str, Any]:
+	if not EVAL_REPORT_PATH.exists():
+		return {"status": "unknown", "when": "n/a", "hit5": "n/a", "groundedness": "n/a"}
+	try:
+		payload = json.loads(EVAL_REPORT_PATH.read_text(encoding="utf-8"))
+		overall = (payload.get("summary") or {}).get("overall") or {}
+		passed = bool(payload.get("passed", False))
+		status = "PASS" if passed else "FAIL"
+		when = datetime.fromtimestamp(EVAL_REPORT_PATH.stat().st_mtime, tz=UTC).isoformat()
+		return {
+			"status": status,
+			"when": when,
+			"hit5": overall.get("hit@5", "n/a"),
+			"groundedness": overall.get("groundedness", "n/a"),
+		}
+	except Exception:
+		return {"status": "unknown", "when": "n/a", "hit5": "n/a", "groundedness": "n/a"}
+
+
+async def quality_command(update: Any, context: ContextTypes.DEFAULT_TYPE) -> None:
+	if not await _require_admin(update):
+		return
+	if not update.message:
+		return
+
+	feedback = _compute_recent_feedback(window_days=7)
+	eval_status = _load_last_eval_status()
+	lines = [
+		"Quality dashboard (last 7 days):",
+		f"- wrong/correct: {feedback['wrong']}/{feedback['correct']} (ratio={feedback['ratio']})",
+		f"- last eval gate: {eval_status['status']} at {eval_status['when']}",
+		f"- eval hit@5: {eval_status['hit5']} | groundedness: {eval_status['groundedness']}",
+		"- top failed queries:",
+	]
+	if feedback["top_failed"]:
+		for q, cnt in feedback["top_failed"]:
+			lines.append(f"  - {cnt}x | {q[:100]}")
+	else:
+		lines.append("  - none")
+
 	await update.message.reply_text("\n".join(lines))
 
 
@@ -990,6 +1075,7 @@ def main() -> None:
 	application.add_handler(CommandHandler("feedback_buttons", feedback_buttons_command))
 	application.add_handler(CommandHandler("feedback", feedback_command))
 	application.add_handler(CommandHandler("feedback_stats", feedback_stats_command))
+	application.add_handler(CommandHandler("quality", quality_command))
 	application.add_handler(CallbackQueryHandler(wrong_answer_callback, pattern=r"^feedback:wrong$"))
 	application.add_handler(CallbackQueryHandler(correct_answer_callback, pattern=r"^feedback:correct$"))
 	application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))

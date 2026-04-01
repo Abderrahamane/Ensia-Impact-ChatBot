@@ -28,6 +28,7 @@ RAG-powered chatbot over Telegram-exported ENSIA IMPACT content.
   - `/mode` shows current backend, reranker models, and confidence thresholds
   - `/commands` lists all available commands with brief descriptions
   - `/feedback_buttons on|off` toggles wrong/correct feedback buttons for your chat
+  - `/quality` (admin) shows recent wrong/correct ratio, top failed queries, and last eval gate status
 - Feedback controls in bot answers:
   - `Wrong answer` button stores full query/mode/sources snapshot
   - `Correct answer` button stores validated snapshots and reinforces successful patterns
@@ -352,6 +353,31 @@ Regression gate:
 CI automation:
 
 - GitHub Actions workflow runs on each push/PR: `.github/workflows/quality-gate.yml`
+
+## Daily data freshness automation
+
+Run full refresh pipeline manually:
+
+```cmd
+python ops/run_daily_freshness.py
+```
+
+Dry-run (show planned steps only):
+
+```cmd
+python ops/run_daily_freshness.py --dry-run
+```
+
+Pipeline order:
+
+1. `pipeline/parse_json.py`
+2. `pipeline/extract_files.py`
+3. `pipeline/reindex_incremental.py`
+4. `pipeline/build_structured_tables.py`
+
+Scheduled automation:
+
+- GitHub Actions daily cron workflow: `.github/workflows/daily-freshness.yml`
 
 Wrong-answer feedback button:
 
