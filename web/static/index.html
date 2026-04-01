@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ENSIA IMPACT Chat</title>
+  <link rel="stylesheet" href="static/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">ENSIA IMPACT</div>
+      <button id="newChatBtn" class="new-chat">+ New chat</button>
+      <div class="sidebar-note">Local model mode</div>
+      <div class="sidebar-note">When backend is unavailable, chat is disabled automatically.</div>
+    </aside>
+
+    <main class="chat-main">
+      <header class="topbar">
+        <h1>Assistant</h1>
+        <p id="status" class="status">Checking server status...</p>
+      </header>
+
+      <section id="chat" class="chat-thread"></section>
+
+      <form id="chatForm" class="composer">
+        <label for="messageInput" class="sr-only">Message input</label>
+        <textarea id="messageInput" rows="1" placeholder="Message ENSIA IMPACT Assistant... (Enter to send, Shift+Enter for newline)"></textarea>
+        <button id="sendBtn" type="submit">Send</button>
+      </form>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
+

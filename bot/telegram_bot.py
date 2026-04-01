@@ -120,6 +120,7 @@ request_timestamps: dict[int, deque[float]] = defaultdict(deque)
 last_request_ts: dict[int, float] = {}
 user_sources_pref: dict[str, bool] = {}
 user_feedback_buttons_pref: dict[str, bool] = {}
+feedback_buttons_global_enabled: bool = True
 bot_started_at = time.time()
 runtime_metrics: dict[str, Any] = {
 	"queries_total": 0,
@@ -159,20 +160,23 @@ TYPO_ALIASES = {
 
 
 def load_user_prefs() -> None:
-	global user_sources_pref, user_feedback_buttons_pref
+	global user_sources_pref, user_feedback_buttons_pref, feedback_buttons_global_enabled
 	if USER_PREFS_FILE.exists():
 		try:
 			payload = json.loads(USER_PREFS_FILE.read_text(encoding="utf-8"))
 			if isinstance(payload, dict) and "sources" in payload:
 				user_sources_pref = payload.get("sources", {}) or {}
 				user_feedback_buttons_pref = payload.get("feedback_buttons", {}) or {}
+				feedback_buttons_global_enabled = bool(payload.get("feedback_buttons_global", True))
 			else:
 				# Backward compatibility with older file format: user_id -> sources_enabled
 				user_sources_pref = payload if isinstance(payload, dict) else {}
 				user_feedback_buttons_pref = {}
+				feedback_buttons_global_enabled = True
 		except Exception:
 			user_sources_pref = {}
 			user_feedback_buttons_pref = {}
+			feedback_buttons_global_enabled = True
 
 
 def save_user_prefs() -> None:
@@ -182,6 +186,7 @@ def save_user_prefs() -> None:
 			{
 				"sources": user_sources_pref,
 				"feedback_buttons": user_feedback_buttons_pref,
+				"feedback_buttons_global": feedback_buttons_global_enabled,
 			},
 			ensure_ascii=False,
 			indent=2,
@@ -224,11 +229,19 @@ def set_sources_pref(user_id: int, enabled: bool) -> None:
 
 
 def get_feedback_buttons_pref(user_id: int) -> bool:
+	if not feedback_buttons_global_enabled:
+		return False
 	return user_feedback_buttons_pref.get(str(user_id), True)
 
 
 def set_feedback_buttons_pref(user_id: int, enabled: bool) -> None:
 	user_feedback_buttons_pref[str(user_id)] = enabled
+	save_user_prefs()
+
+
+def set_feedback_buttons_global(enabled: bool) -> None:
+	global feedback_buttons_global_enabled
+	feedback_buttons_global_enabled = bool(enabled)
 	save_user_prefs()
 
 
@@ -721,8 +734,9 @@ async def feedback_buttons_command(update: Any, context: ContextTypes.DEFAULT_TY
 		return
 	if not context.args:
 		state = "on" if get_feedback_buttons_pref(update.effective_user.id) else "off"
+		global_state = "on" if feedback_buttons_global_enabled else "off"
 		await update.message.reply_text(
-			f"Feedback buttons are currently {state}. Use /feedback_buttons on or /feedback_buttons off"
+			f"Feedback buttons are currently {state} (global={global_state}). Use /feedback_buttons on or /feedback_buttons off"
 		)
 		return
 
@@ -731,8 +745,15 @@ async def feedback_buttons_command(update: Any, context: ContextTypes.DEFAULT_TY
 		await update.message.reply_text("Usage: /feedback_buttons on|off")
 		return
 
-	set_feedback_buttons_pref(update.effective_user.id, value == "on")
-	await update.message.reply_text(f"Feedback buttons set to {value}.")
+	enabled = value == "on"
+	if _is_admin(update):
+		set_feedback_buttons_global(enabled)
+		set_feedback_buttons_pref(update.effective_user.id, enabled)
+		await update.message.reply_text(f"Feedback buttons GLOBAL setting set to {value}. (Applied to your admin account too)")
+		return
+
+	set_feedback_buttons_pref(update.effective_user.id, enabled)
+	await update.message.reply_text(f"Feedback buttons set to {value} for your account.")
 
 
 async def feedback_command(update: Any, context: ContextTypes.DEFAULT_TYPE) -> None:

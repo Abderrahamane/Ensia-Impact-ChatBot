@@ -27,7 +27,7 @@ RAG-powered chatbot over Telegram-exported ENSIA IMPACT content.
   - `/why` explains why last answer was chosen (intent, top entities, top source)
   - `/mode` shows current backend, reranker models, and confidence thresholds
   - `/commands` lists all available commands with brief descriptions
-  - `/feedback_buttons on|off` toggles wrong/correct feedback buttons for your chat
+  - `/feedback_buttons on|off` toggles wrong/correct feedback buttons (admin: global, normal user: per-account)
   - `/quality` (admin) shows recent wrong/correct ratio, top failed queries, and last eval gate status
 - Feedback controls in bot answers:
   - `Wrong answer` button stores full query/mode/sources snapshot
@@ -148,6 +148,124 @@ python pipeline/extract_files.py
 python pipeline/chunk_and_embed.py
 python pipeline/rag_query.py --query "Where can I find internship opportunities in AI?"
 ```
+
+## Deployment (current laptop-hosted model)
+
+You now have two user channels:
+
+1. Telegram bot (`bot/telegram_bot.py`)
+2. Website chat (`web/app.py`)
+
+Install dependencies:
+
+```cmd
+python -m pip install -r requirements.txt
+```
+
+Run both services locally (single command):
+
+```cmd
+python ops/run_local_deploy.py
+```
+
+Or run separately:
+
+```cmd
+python web/app.py
+python bot/telegram_bot.py
+```
+
+Website URL:
+
+- `http://127.0.0.1:8000`
+
+Frontend notes:
+
+- ChatGPT-style layout with sidebar + chat bubbles
+- Enter to send, Shift+Enter for newline
+- New Chat button clears local browser chat history
+- Health-aware input lock when backend is down
+
+Server-down behavior:
+
+- If the local model endpoint is down while web app is running, the website shows `Server is off, try later` and disables sending.
+- If your laptop is fully off, no local service can be reached (Telegram/web hosted on same laptop are unavailable).
+
+## Daily freshness automation
+
+The project includes a daily pipeline runner:
+
+```cmd
+python ops/run_daily_freshness.py
+```
+
+Dry-run:
+
+```cmd
+python ops/run_daily_freshness.py --dry-run
+```
+
+Steps:
+
+1. `pipeline/parse_json.py`
+2. `pipeline/extract_files.py`
+3. `pipeline/reindex_incremental.py`
+4. `pipeline/build_structured_tables.py`
+
+GitHub schedule file:
+
+- `.github/workflows/daily-freshness.yml`
+
+## Datacenter migration (later, minimal changes)
+
+To move inference from laptop to datacenter later, keep the same app and only change runtime env/config:
+
+- Keep Telegram + web code unchanged.
+- Point generation backend to datacenter endpoint/model settings.
+- Keep freshness and quality scripts unchanged.
+
+Recommended migration checklist:
+
+1. Deploy repository on datacenter VM/server.
+2. Install dependencies and model runtime there.
+3. Set production `.env` on server (no local secrets reuse).
+4. Run `python ops/run_local_deploy.py` (or separate process manager services).
+5. Update DNS/reverse proxy for website URL.
+
+## Windows auto-start on boot (production script)
+
+Files:
+
+- `deploy/windows/start_ensia_stack.bat`
+- `deploy/windows/ensia_stack_on_boot.xml`
+- `deploy/windows/install_task.bat`
+
+Install scheduled task (run as administrator CMD):
+
+```cmd
+cd /d C:\Users\MICROSOFT\PycharmProjects\ENSIA_IMPACT_Group_ChatBot
+deploy\windows\install_task.bat
+```
+
+Manual test:
+
+```cmd
+schtasks /Run /TN "ENSIA_IMPACT_Stack_OnBoot"
+```
+
+Logs are written to:
+
+- `logs/web_stdout.log`, `logs/web_stderr.log`
+- `logs/bot_stdout.log`, `logs/bot_stderr.log`
+
+## Website deployment prep
+
+`render.yaml` is prepared with two services:
+
+- `ensia-impact-web` (FastAPI website)
+- `ensia-impact-bot` (Telegram worker)
+
+Note: while model inference stays local on your laptop, remote web/worker deployment cannot access local inference unless you later expose/migrate backend inference endpoint (recommended in datacenter phase).
 
 Media extraction notes:
 
