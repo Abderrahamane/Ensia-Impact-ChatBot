@@ -10,6 +10,8 @@ const apiBaseInput = document.getElementById("apiBaseInput");
 const saveApiBtn = document.getElementById("saveApiBtn");
 const quickPromptsEl = document.getElementById("quickPrompts");
 const toastEl = document.getElementById("toast");
+const msgCountEl = document.getElementById("msgCount");
+const apiModeEl = document.getElementById("apiMode");
 const CHAT_STORAGE_KEY = "ensia_web_chat_v1";
 const THEME_STORAGE_KEY = "ensia_web_theme";
 const API_BASE_KEY = "ensia_api_base";
@@ -33,6 +35,11 @@ function setOnlineState(isOnline, message) {
   sendBtn.disabled = !isOnline;
 }
 
+function setModeLabel(mode) {
+  if (!apiModeEl) return;
+  apiModeEl.textContent = `Mode: ${mode || "-"}`;
+}
+
 function showToast(message) {
   if (!toastEl) return;
   toastEl.textContent = message;
@@ -42,12 +49,20 @@ function showToast(message) {
 
 function saveChatHistory() {
   localStorage.setItem(CHAT_STORAGE_KEY, chatEl.innerHTML);
+  updateMessageCount();
 }
 
 function loadChatHistory() {
   const html = localStorage.getItem(CHAT_STORAGE_KEY);
   if (html) chatEl.innerHTML = html;
   chatEl.scrollTop = chatEl.scrollHeight;
+  updateMessageCount();
+}
+
+function updateMessageCount() {
+  if (!msgCountEl) return;
+  const count = chatEl.querySelectorAll(".msg").length;
+  msgCountEl.textContent = `${count} message${count === 1 ? "" : "s"}`;
 }
 
 function setTheme(theme) {
@@ -97,13 +112,14 @@ function addMessage(role, text, sources = []) {
   if (role === "bot" && Array.isArray(sources) && sources.length) {
     const src = document.createElement("div");
     src.className = "sources";
-    const bits = sources.slice(0, 2).map((s) => {
+    const bits = sources.slice(0, 3).map((s) => {
+      const trust = s.trust ? ` (${s.trust})` : "";
       const label = `${s.date || ""} ${s.from || ""}`.trim() || "source";
       const link = (s.links || "").split("|")[0]?.trim();
       if (link && /^https?:\/\//.test(link)) {
-        return `<a href="${link}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+        return `<a href="${link}" target="_blank" rel="noopener noreferrer">${label}${trust}</a>`;
       }
-      return label;
+      return `${label}${trust}`;
     });
     src.innerHTML = "Sources: " + (bits.length ? bits.join(" | ") : "n/a");
     wrap.appendChild(src);
@@ -120,7 +136,7 @@ function showTyping() {
   wrap.id = "typingWrap";
   const div = document.createElement("div");
   div.className = "msg bot";
-  div.textContent = "Thinking...";
+  div.innerHTML = "Thinking <span class=\"typing\"><span></span><span></span><span></span></span>";
   wrap.appendChild(div);
   chatEl.appendChild(wrap);
   chatEl.scrollTop = chatEl.scrollHeight;
@@ -134,6 +150,18 @@ function hideTyping() {
 function clearChat() {
   chatEl.innerHTML = "";
   localStorage.removeItem(CHAT_STORAGE_KEY);
+  updateMessageCount();
+}
+
+async function loadApiInfo() {
+  try {
+    const res = await fetch(apiUrl("/api/info"), { method: "GET" });
+    if (!res.ok) return;
+    const data = await res.json();
+    setModeLabel(data.backend || "-");
+  } catch {
+    setModeLabel("-");
+  }
 }
 
 async function checkHealth() {
@@ -142,6 +170,7 @@ async function checkHealth() {
     const data = await res.json();
     if (data.ok) {
       setOnlineState(true, `Server is online (backend: ${data.backend}).`);
+      setModeLabel(data.backend || "-");
     } else {
       setOnlineState(false, "Server is off, try later.");
     }
@@ -160,6 +189,7 @@ formEl.addEventListener("submit", async (e) => {
   inputEl.style.height = "auto";
   sendBtn.disabled = true;
   showTyping();
+  const startedAt = Date.now();
 
   try {
     const res = await fetch(apiUrl("/api/chat"), {
@@ -170,6 +200,11 @@ formEl.addEventListener("submit", async (e) => {
     const data = await res.json();
     hideTyping();
     addMessage("bot", data.answer || "No response.", data.sources || []);
+    if (data.mode) {
+      setModeLabel(data.mode);
+    }
+    const elapsedMs = Date.now() - startedAt;
+    showToast(`Answered in ${elapsedMs} ms`);
   } catch {
     hideTyping();
     addMessage("bot", "Server is down, please try later.");
@@ -191,7 +226,10 @@ inputEl.addEventListener("input", () => {
 });
 
 if (newChatBtn) {
-  newChatBtn.addEventListener("click", clearChat);
+  newChatBtn.addEventListener("click", () => {
+    clearChat();
+    showToast("Chat reset");
+  });
 }
 
 if (themeBtn) {
@@ -203,11 +241,16 @@ if (themeBtn) {
 
 if (exportBtn) {
   exportBtn.addEventListener("click", () => {
-    const blob = new Blob([chatEl.innerText], { type: "text/plain;charset=utf-8" });
+    const payload = {
+      exported_at: new Date().toISOString(),
+      endpoint: getApiBase() || window.location.origin,
+      transcript_text: chatEl.innerText,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "ensia_chat_export.txt";
+    a.download = "ensia_chat_export.json";
     a.click();
     URL.revokeObjectURL(url);
   });
@@ -239,6 +282,7 @@ if (quickPromptsEl) {
 
 loadTheme();
 loadChatHistory();
+loadApiInfo();
 checkHealth();
 setInterval(checkHealth, 10000);
 

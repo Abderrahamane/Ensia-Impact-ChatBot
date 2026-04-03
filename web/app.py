@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -18,13 +19,23 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from config import GENERATION_BACKEND, LOCAL_BASE_URL
+from config import EMBEDDING_MODEL, GENERATION_BACKEND, LOCAL_BASE_URL, RAG_TOP_K
 from pipeline.rag_query import RAGEngine
 
 WEB_DIR = Path(__file__).resolve().parent
 STATIC_DIR = WEB_DIR / "static"
 
-app = FastAPI(title="ENSIA IMPACT Web API", version="1.0.0")
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    # Warm up heavy retrieval pieces once so first visitor response is faster.
+    try:
+        get_engine().warmup()
+    except Exception:
+        pass
+    yield
+
+
+app = FastAPI(title="ENSIA IMPACT Web API", version="1.0.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -84,6 +95,22 @@ def health() -> dict[str, Any]:
         "ok": reachable,
         "backend": GENERATION_BACKEND,
         "message": "ready" if reachable else "server is down please try later",
+    }
+
+
+@app.get("/api/info")
+def info() -> dict[str, Any]:
+    return {
+        "name": "ENSIA IMPACT Assistant",
+        "status": "online" if _local_backend_reachable() else "degraded",
+        "backend": GENERATION_BACKEND,
+        "embedding_model": EMBEDDING_MODEL,
+        "default_top_k": RAG_TOP_K,
+        "features": [
+            "RAG over ENSIA indexed data",
+            "Source-aware answers",
+            "Multilingual retrieval (AR/FR/EN)",
+        ],
     }
 
 

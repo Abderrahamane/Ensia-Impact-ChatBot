@@ -3,30 +3,50 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ENSIA IMPACT Chat</title>
+  <meta name="description" content="ENSIA IMPACT AI Assistant - multilingual RAG chatbot with source-grounded answers." />
+  <title>ENSIA IMPACT Assistant</title>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">ENSIA IMPACT</div>
-      <button id="newChatBtn" class="new-chat">+ New chat</button>
-      <button id="themeBtn" class="new-chat">Toggle theme</button>
-      <button id="exportBtn" class="new-chat">Export chat</button>
-      <div class="sidebar-note">Local model mode</div>
-      <div class="sidebar-note">When backend is unavailable, chat is disabled automatically.</div>
-      <label for="apiBaseInput" class="sidebar-note">API base URL (optional)</label>
-      <input id="apiBaseInput" class="api-base" type="text" placeholder="http://127.0.0.1:8000" />
-      <button id="saveApiBtn" class="new-chat">Save endpoint</button>
+      <p class="sidebar-tagline">Portfolio demo: source-grounded AI assistant for ENSIA community.</p>
+
+      <div class="side-actions">
+        <button id="newChatBtn" class="new-chat">+ New chat</button>
+        <button id="themeBtn" class="new-chat">Toggle theme</button>
+        <button id="exportBtn" class="new-chat">Export chat</button>
+      </div>
+
+      <div class="side-block">
+        <div class="sidebar-note strong">Cloud endpoint</div>
+        <label for="apiBaseInput" class="sidebar-note">API base URL (optional)</label>
+        <input id="apiBaseInput" class="api-base" type="text" placeholder="https://your-api-domain" />
+        <button id="saveApiBtn" class="new-chat">Save endpoint</button>
+      </div>
+
+      <div class="side-block">
+        <div class="sidebar-note strong">Capabilities</div>
+        <ul class="cap-list">
+          <li>Arabic/French/English retrieval</li>
+          <li>Source trust labels</li>
+          <li>Partnership and events focus</li>
+        </ul>
+      </div>
     </aside>
 
     <main class="chat-main">
       <header class="topbar">
         <div>
-          <h1>Assistant</h1>
-          <p class="subtitle">Ask about ENSIA partnerships, events, internships, and resources.</p>
+          <h1>ENSIA IMPACT Assistant</h1>
+          <p class="subtitle">Ask about partnerships, events, internships, programs, and resources.</p>
+          <div class="meta-row">
+            <span id="status" class="status">Checking server status...</span>
+            <span id="msgCount" class="pill">0 messages</span>
+            <span id="apiMode" class="pill">Mode: -</span>
+          </div>
         </div>
-        <p id="status" class="status">Checking server status...</p>
       </header>
 
       <section id="chat" class="chat-thread"></section>
@@ -34,12 +54,13 @@
       <section id="quickPrompts" class="quick-prompts">
         <button type="button" class="prompt-chip" data-q="What are current partnerships with ENSIA IMPACT?">Partnerships</button>
         <button type="button" class="prompt-chip" data-q="Show me recent ENSIA IMPACT events timeline.">Events timeline</button>
-        <button type="button" class="prompt-chip" data-q="Is there any resource about DataCamp in this server?">DataCamp resources</button>
+        <button type="button" class="prompt-chip" data-q="Where can students find internship opportunities?">Internships</button>
+        <button type="button" class="prompt-chip" data-q="Give me available learning resources and links.">Resources</button>
       </section>
 
       <form id="chatForm" class="composer">
         <label for="messageInput" class="sr-only">Message input</label>
-        <textarea id="messageInput" rows="1" placeholder="Message ENSIA IMPACT Assistant... (Enter to send, Shift+Enter for newline)"></textarea>
+        <textarea id="messageInput" rows="1" placeholder="Ask something... (Enter to send, Shift+Enter for newline)"></textarea>
         <button id="sendBtn" type="submit">Send</button>
       </form>
     </main>

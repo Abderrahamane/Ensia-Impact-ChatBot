@@ -2,6 +2,19 @@
 
 RAG-powered chatbot over Telegram-exported ENSIA IMPACT content.
 
+## Portfolio and cloud launch (quick path)
+
+If you want to publish this project on GitHub and deploy it so it works without your laptop, follow:
+
+- `PORTFOLIO_DEPLOYMENT.md`
+
+This guide gives a practical path for:
+
+1. public-repo cleanup,
+2. free-cloud deployment choices,
+3. website launch,
+4. reliability setup.
+
 ## Current status
 
 - Phase 1: `pipeline/parse_json.py` (done)

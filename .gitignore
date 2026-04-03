@@ -21,8 +21,17 @@ logs/
 # Local data artifacts (large/generated)
 data/vectorstore/
 data/processed/
+data/raw/
 backups/
 artifacts/
+
+# Python tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Databases/runtime
+*.sqlite3
 
 # OS/editor
 .DS_Store
